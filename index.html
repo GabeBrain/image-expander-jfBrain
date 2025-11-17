@@ -6,18 +6,10 @@
   <title>Image Expander - JF Brain</title>
   <style>
     :root {
-      color-scheme: light;
-      --bg-start: #0b1220;
-      --bg-end: #192942;
-      --surface: #ffffff;
-      --surface-muted: #f4f6fb;
-      --border: #d9deea;
-      --text: #111c3a;
-      --accent: #0055ff;
-      --accent-strong: #002d94;
-      --success: #1e8e3e;
-      --warning: #b46a00;
-      --error: #c62828;
+      color-scheme: dark;
+      --bg: #030712;
+      --canvas: #050a18;
+      --placeholder: rgba(255, 255, 255, 0.65);
     }
 
     * {
@@ -28,92 +20,39 @@
       margin: 0;
       min-height: 100vh;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at top, var(--bg-start), var(--bg-end));
-      color: var(--text);
+      background: radial-gradient(circle at top, #03050c, #050a18, #010208);
+      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 32px;
     }
 
-    main.widget {
-      width: min(960px, 100%);
-      background: var(--surface);
-      border-radius: 16px;
-      padding: 32px;
-      box-shadow:
-        0 20px 60px rgba(4, 7, 18, 0.35),
-        0 1px 4px rgba(3, 7, 18, 0.15);
+    .viewer {
+      width: 100%;
+      min-height: 100vh;
       display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    header {
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 16px;
-    }
-
-    header h1 {
-      margin: 0 0 8px;
-      font-size: 1.65rem;
-      color: var(--accent-strong);
-    }
-
-    header p {
-      margin: 0;
-      color: #506088;
-      font-size: 0.98rem;
-    }
-
-    .source-card {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--surface-muted);
-      padding: 18px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      font-size: 0.95rem;
-      line-height: 1.4;
-    }
-
-    .source-card strong {
-      color: var(--accent-strong);
-    }
-
-    .source-card__status {
-      margin: 0;
-      font-weight: 600;
-    }
-
-    .source-card__status[data-tone="info"] {
-      color: var(--accent-strong);
-    }
-
-    .source-card__status[data-tone="warning"] {
-      color: var(--warning);
-    }
-
-    .source-card__status[data-tone="success"] {
-      color: var(--success);
+      align-items: center;
+      justify-content: center;
+      padding: clamp(8px, 4vw, 40px);
     }
 
     .carousel {
-      border: 1px dashed var(--border);
-      border-radius: 16px;
-      background: var(--surface-muted);
-      padding: 24px;
-      position: relative;
+      width: min(1200px, 100%);
     }
 
     .carousel__viewport {
-      position: relative;
+      width: 100%;
+      border-radius: clamp(16px, 3vw, 32px);
       overflow: hidden;
-      border-radius: 16px;
-      min-height: 360px;
-      background: linear-gradient(135deg, rgba(15, 25, 45, 0.85), rgba(30, 45, 70, 0.65));
+      background: linear-gradient(135deg, rgba(8, 13, 25, 0.95), rgba(9, 17, 39, 0.75));
+      box-shadow: 0 20px 80px rgba(0, 0, 0, 0.55);
+      min-height: clamp(280px, 65vh, 720px);
       touch-action: pan-y;
+      position: relative;
+    }
+
+    body.orientation-landscape .carousel__viewport {
+      min-height: clamp(320px, 90vh, 900px);
     }
 
     .carousel__track {
@@ -130,23 +69,24 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: clamp(8px, 2vw, 32px);
     }
 
     .carousel__slide img {
-      max-width: 100%;
-      max-height: 60vh;
-      border-radius: 12px;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: clamp(12px, 2vw, 24px);
       box-shadow:
-        0 14px 40px rgba(15, 35, 75, 0.35),
-        0 2px 6px rgba(11, 24, 54, 0.2);
-      background: #0e172a;
-      transition: transform 0.2s ease;
+        0 25px 60px rgba(5, 12, 28, 0.8),
+        0 2px 6px rgba(0, 0, 0, 0.5);
       cursor: zoom-in;
+      transition: transform 0.2s ease;
+      background: #000;
     }
 
     .carousel__slide img:active {
-      transform: scale(0.98);
+      transform: scale(0.99);
     }
 
     .carousel__placeholder {
@@ -156,69 +96,11 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      color: #d5daea;
+      color: var(--placeholder);
+      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+      letter-spacing: 0.02em;
       padding: 24px;
-      font-size: 1rem;
-    }
-
-    .carousel__nav {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      border: none;
-      background: rgba(6, 19, 48, 0.85);
-      color: #fff;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 8px 24px rgba(4, 15, 40, 0.45);
-      transition: opacity 0.2s ease;
-    }
-
-    .carousel__nav:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-
-    .carousel__nav--prev {
-      left: -12px;
-    }
-
-    .carousel__nav--next {
-      right: -12px;
-    }
-
-    .carousel__meta {
-      margin-top: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: var(--accent-strong);
-    }
-
-    .carousel__meta span {
-      font-size: 0.95rem;
-    }
-
-    .image-name {
-      margin: 8px 0 0;
-      font-weight: 600;
-      color: var(--accent-strong);
-      text-align: center;
-    }
-
-    button {
-      font-family: inherit;
-    }
-
-    button:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
+      background: rgba(0, 0, 0, 0.2);
     }
 
     .hidden {
@@ -228,189 +110,73 @@
     .lightbox {
       position: fixed;
       inset: 0;
-      background: rgba(3, 5, 15, 0.92);
+      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
       z-index: 999;
+      touch-action: none;
+      opacity: 1;
     }
 
-    .lightbox__panel {
-      background: #050913;
-      border-radius: 18px;
-      width: min(960px, 100%);
-      min-height: min(85vh, 720px);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      color: #f4f6ff;
-      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.6);
-    }
-
-    .lightbox__header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .lightbox__header h2 {
-      margin: 0;
-      font-size: 1.2rem;
-      font-weight: 600;
+    .lightbox.hidden {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .lightbox__close {
+      position: fixed;
+      top: clamp(12px, 3vw, 32px);
+      right: clamp(12px, 3vw, 32px);
+      width: clamp(40px, 5vw, 56px);
+      height: clamp(40px, 5vw, 56px);
+      border-radius: 999px;
       border: none;
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.45);
       color: #fff;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      font-size: 1.2rem;
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
       cursor: pointer;
+      z-index: 1000;
     }
 
     .lightbox__canvas {
-      flex: 1;
-      background: radial-gradient(circle, rgba(9, 14, 28, 0.92), rgba(3, 5, 12, 0.95));
-      border-radius: 14px;
-      overflow: hidden;
-      position: relative;
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      touch-action: none;
     }
 
     .lightbox__canvas img {
-      max-width: 100%;
-      max-height: 100%;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       transform-origin: center;
-      transition: transform 0.1s ease-out;
       cursor: grab;
+      touch-action: none;
     }
 
     .lightbox__canvas img:active {
       cursor: grabbing;
     }
-
-    .lightbox__controls {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      justify-content: flex-end;
-    }
-
-    .lightbox__controls button {
-      border: none;
-      border-radius: 10px;
-      padding: 10px 16px;
-      font-weight: 600;
-      cursor: pointer;
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
-    }
-
-    .lightbox__controls button.primary {
-      background: #1c7dff;
-    }
-
-    .lightbox__controls span {
-      font-variant-numeric: tabular-nums;
-      min-width: 56px;
-      text-align: center;
-    }
-
-    @media (max-width: 720px) {
-      body {
-        padding: 16px;
-      }
-
-      main.widget {
-        padding: 20px;
-      }
-
-      .carousel {
-        padding: 16px;
-      }
-
-      .carousel__nav {
-        width: 40px;
-        height: 40px;
-        top: auto;
-        bottom: 16px;
-        transform: none;
-      }
-
-      .carousel__nav--prev {
-        left: 16px;
-      }
-
-      .carousel__nav--next {
-        right: 16px;
-      }
-
-      .lightbox {
-        padding: 16px;
-      }
-
-      .lightbox__panel {
-        padding: 16px;
-        min-height: 80vh;
-      }
-    }
   </style>
 </head>
 <body>
-  <main class="widget">
-    <header>
-      <h1>Image Expander - JF Brain</h1>
-      <p>Carregue ate 15 imagens em Configuracoes do Widget e disponibilize-as para o respondente com zoom e gesto de swipe.</p>
-    </header>
-
-    <section class="source-card">
-      <strong>Como configurar:</strong>
-      <p>Abra as Configuracoes do Widget, use o parametro <em>"Upload de Arquivos"</em> (ate 15 imagens) e, opcionalmente, informe nomes personalizados linha a linha no parametro <em>"Labels das Imagens"</em>.</p>
-      <p id="sourceStatus" class="source-card__status" data-tone="info">Aguardando dados do widget...</p>
-    </section>
-
-    <section class="carousel" aria-live="polite">
-      <button id="prevButton" class="carousel__nav carousel__nav--prev" aria-label="Imagem anterior">&larr;</button>
-      <div id="carouselViewport" class="carousel__viewport">
+  <div class="viewer">
+    <div class="carousel">
+      <div id="carouselViewport" class="carousel__viewport" aria-live="polite">
         <div id="carouselTrack" class="carousel__track" role="list"></div>
-        <p id="placeholder" class="carousel__placeholder">
-          As imagens configuradas no widget aparecerao aqui para o respondente deslizar e ampliar.
-        </p>
+        <div id="placeholder" class="carousel__placeholder">
+          Nenhuma imagem configurada neste widget.
+        </div>
       </div>
-      <button id="nextButton" class="carousel__nav carousel__nav--next" aria-label="Proxima imagem">&rarr;</button>
+    </div>
+  </div>
 
-      <div class="carousel__meta">
-        <span id="carouselCounter">0 / 0</span>
-        <span id="carouselStatus">Nenhuma imagem carregada.</span>
-      </div>
-      <p id="imageName" class="image-name hidden"></p>
-    </section>
-  </main>
-
-  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-labelledby="lightboxCaption">
-    <div class="lightbox__panel">
-      <div class="lightbox__header">
-        <h2 id="lightboxCaption">Visualizando imagem</h2>
-        <button id="closeLightbox" class="lightbox__close" aria-label="Fechar visualizacao">&times;</button>
-      </div>
-      <div id="lightboxCanvas" class="lightbox__canvas">
-        <img id="lightboxImage" alt="Imagem ampliada" draggable="false" />
-      </div>
-      <div class="lightbox__controls">
-        <button id="zoomOutBtn" aria-label="Diminuir zoom">-</button>
-        <span id="zoomLevel">100%</span>
-        <button id="zoomInBtn" class="primary" aria-label="Aumentar zoom">+</button>
-        <button id="resetZoomBtn" aria-label="Reiniciar zoom">Reset</button>
-      </div>
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true">
+    <button id="closeLightbox" class="lightbox__close" aria-label="Fechar">&times;</button>
+    <div id="lightboxCanvas" class="lightbox__canvas">
+      <img id="lightboxImage" alt="Imagem ampliada" draggable="false" />
     </div>
   </div>
 
@@ -424,22 +190,10 @@
       const track = document.getElementById('carouselTrack');
       const viewport = document.getElementById('carouselViewport');
       const placeholder = document.getElementById('placeholder');
-      const prevButton = document.getElementById('prevButton');
-      const nextButton = document.getElementById('nextButton');
-      const counter = document.getElementById('carouselCounter');
-      const status = document.getElementById('carouselStatus');
-      const imageName = document.getElementById('imageName');
-      const sourceStatus = document.getElementById('sourceStatus');
-
       const lightbox = document.getElementById('lightbox');
       const lightboxImage = document.getElementById('lightboxImage');
-      const lightboxCaption = document.getElementById('lightboxCaption');
       const lightboxCanvas = document.getElementById('lightboxCanvas');
       const closeLightboxBtn = document.getElementById('closeLightbox');
-      const zoomInBtn = document.getElementById('zoomInBtn');
-      const zoomOutBtn = document.getElementById('zoomOutBtn');
-      const resetZoomBtn = document.getElementById('resetZoomBtn');
-      const zoomLevel = document.getElementById('zoomLevel');
 
       const state = {
         images: [],
@@ -457,19 +211,20 @@
         scale: 1,
         translateX: 0,
         translateY: 0,
-        pointerId: null,
         panning: false,
+        pointerId: null,
         lastX: 0,
         lastY: 0,
       };
 
-      let jotformBridgeReady = false;
-
-      const updateSourceStatus = (message, tone = 'info') => {
-        if (!sourceStatus) return;
-        sourceStatus.textContent = message;
-        sourceStatus.dataset.tone = tone;
+      const lightboxPointers = new Map();
+      const pinchState = {
+        active: false,
+        startDistance: 0,
+        startScale: 1,
       };
+
+      let jotformBridgeReady = false;
 
       const serializeImages = () => JSON.stringify(state.images);
 
@@ -479,36 +234,15 @@
         }
       };
 
-      const updateMeta = () => {
-        const total = state.images.length;
-        if (!total) {
-          counter.textContent = '0 / 0';
-          status.textContent = 'Nenhuma imagem carregada.';
-          prevButton.disabled = true;
-          nextButton.disabled = true;
-          imageName.classList.add('hidden');
-          imageName.textContent = '';
-          return;
-        }
-
-        const index = state.activeIndex ?? 0;
-        counter.textContent = `${index + 1} / ${total}`;
-        status.textContent = 'Deslize para ver as proximas imagens.';
-        prevButton.disabled = index === 0;
-        nextButton.disabled = index === total - 1;
-        imageName.textContent = state.images[index].name;
-        imageName.classList.remove('hidden');
-      };
-
       const updateTrackPosition = () => {
         if (!state.images.length) {
-          track.style.transform = 'translateX(0)';
+          track.style.transform = 'translate3d(0,0,0)';
           return;
         }
 
         const slideWidth = viewport.clientWidth;
         const offset = slideWidth * (state.activeIndex ?? 0);
-        track.style.transform = `translateX(-${offset}px)`;
+        track.style.transform = `translate3d(-${offset}px, 0, 0)`;
       };
 
       const goToSlide = (index) => {
@@ -517,18 +251,15 @@
         if (nextIndex === state.activeIndex) return;
         state.activeIndex = nextIndex;
         updateTrackPosition();
-        updateMeta();
       };
 
       const openLightbox = (index) => {
         if (!state.images[index]) return;
         state.activeIndex = index;
         updateTrackPosition();
-        updateMeta();
 
         lightboxImage.src = state.images[index].url;
-        lightboxImage.alt = state.images[index].name;
-        lightboxCaption.textContent = state.images[index].name;
+        lightboxImage.alt = state.images[index].name || `Imagem ${index + 1}`;
         lightbox.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
         resetZoom(true);
@@ -537,21 +268,23 @@
       const closeLightbox = () => {
         lightbox.classList.add('hidden');
         document.body.style.overflow = '';
+        resetZoom();
       };
 
       const applyZoom = () => {
         lightboxImage.style.transform =
           `translate(${zoomState.translateX}px, ${zoomState.translateY}px) scale(${zoomState.scale})`;
-        zoomLevel.textContent = `${Math.round(zoomState.scale * 100)}%`;
       };
 
       const resetZoom = (initial = false) => {
         zoomState.scale = 1;
         zoomState.translateX = 0;
         zoomState.translateY = 0;
+        zoomState.panning = false;
+        zoomState.pointerId = null;
         if (!initial) {
-          zoomState.pointerId = null;
-          zoomState.panning = false;
+          lightboxPointers.clear();
+          pinchState.active = false;
         }
         applyZoom();
       };
@@ -571,7 +304,8 @@
 
         if (!state.images.length) {
           placeholder.classList.remove('hidden');
-          updateMeta();
+          state.activeIndex = null;
+          updateTrackPosition();
           return;
         }
 
@@ -582,11 +316,11 @@
           slide.className = 'carousel__slide';
           slide.setAttribute('role', 'group');
           slide.setAttribute('aria-roledescription', 'slide');
-          slide.setAttribute('aria-label', `Imagem ${index + 1} de ${state.images.length}`);
+          slide.setAttribute('aria-label', `Imagem ${index + 1}`);
 
           const img = document.createElement('img');
           img.src = url;
-          img.alt = name;
+          img.alt = name || `Imagem ${index + 1}`;
           img.draggable = false;
 
           img.addEventListener('click', () => openLightbox(index));
@@ -602,16 +336,14 @@
         }
 
         updateTrackPosition();
-        updateMeta();
       };
 
       const resetView = () => {
         state.images = [];
         state.activeIndex = null;
         track.innerHTML = '';
-        updateTrackPosition();
-        updateMeta();
         placeholder.classList.remove('hidden');
+        updateTrackPosition();
       };
 
       const parseImageList = (raw) => {
@@ -622,15 +354,15 @@
             return parsed
               .map((item, index) => {
                 if (!item) return null;
-                const url = item.url || item.value;
+                const url = item.url || item.value || item.path;
                 if (!url) return null;
                 const name = item.name || item.label || `Imagem ${index + 1}`;
                 return { name, url };
               })
               .filter(Boolean);
           }
-        } catch (_) {
-          return [];
+        } catch (error) {
+          console.warn('Nao foi possivel interpretar a lista de imagens:', error);
         }
         return [];
       };
@@ -643,13 +375,10 @@
         if (typeof raw === 'string') {
           const trimmed = raw.trim();
           if (!trimmed) return [];
-          // Try JSON array first
           try {
             const parsed = JSON.parse(trimmed);
             if (Array.isArray(parsed)) return parsed;
-          } catch (_) {
-            // not JSON
-          }
+          } catch (_) {}
           if (trimmed.includes('\n')) {
             return trimmed.split('\n').map((line) => line.trim()).filter(Boolean);
           }
@@ -664,31 +393,26 @@
       const extractLabels = (settings, primaryKey) => {
         if (!settings) return [];
         const preferredKeys = [
-          'imageLabels',
+          'imagelabels',
           'labels',
           'names',
           'nomes',
           'titulos',
         ];
-
         if (primaryKey) {
-          preferredKeys.push(`${primaryKey}Labels`);
-          preferredKeys.push(`${primaryKey}Label`);
-          preferredKeys.push(`${primaryKey}Names`);
+          preferredKeys.push(`${primaryKey.toLowerCase()}labels`);
+          preferredKeys.push(`${primaryKey.toLowerCase()}names`);
         }
 
-        const candidates = Object.keys(settings)
-          .filter((key) => preferredKeys.some((hint) => key.toLowerCase().includes(hint)))
-          .concat(preferredKeys);
-
-        for (const key of candidates) {
-          if (!key || settings[key] == null) continue;
-          const arr = normalizeArrayValue(settings[key]);
-          if (arr.length) {
-            return arr.map((item) => (typeof item === 'string' ? item.trim() : '')).filter((line) => line.length);
+        for (const key of Object.keys(settings)) {
+          const normalizedKey = key.toLowerCase();
+          if (preferredKeys.some((hint) => normalizedKey.includes(hint))) {
+            const arr = normalizeArrayValue(settings[key]);
+            if (arr.length) {
+              return arr.map((value) => (typeof value === 'string' ? value.trim() : '')).filter(Boolean);
+            }
           }
         }
-
         return [];
       };
 
@@ -732,10 +456,10 @@
           .map((entry, index) => {
             const url = fileUrlFromItem(entry);
             if (!url) return null;
-            const nameFromLabel = labels[index] || '';
+            const label = labels[index] || '';
             const fallbackName = fileNameFromItem(entry, `Imagem ${index + 1}`);
             return {
-              name: nameFromLabel || fallbackName,
+              name: label || fallbackName,
               url,
             };
           })
@@ -743,29 +467,26 @@
       };
 
       const detectUploadsInSettings = (settings = {}) => {
-        const entries = Object.entries(settings);
         const hints = ['upload', 'file', 'imagem', 'image', 'galeria', 'gallery', 'arquivo'];
 
-        for (const [key, value] of entries) {
+        for (const [key, value] of Object.entries(settings)) {
           if (value == null) continue;
           const normalizedKey = key.toLowerCase();
           const looksLikeUpload = hints.some((hint) => normalizedKey.includes(hint));
-
           const arr = normalizeArrayValue(value);
           const hasFileShape = arr.some((item) => {
             if (!item) return false;
-            if (typeof item === 'string') return item.startsWith('http') || item.includes('/');
+            if (typeof item === 'string') {
+              return item.startsWith('http') || item.includes('/');
+            }
             return Boolean(fileUrlFromItem(item));
           });
-
-          if (!arr.length || (!looksLikeUpload && !hasFileShape)) {
-            continue;
-          }
+          if (!arr.length || (!looksLikeUpload && !hasFileShape)) continue;
 
           const labels = extractLabels(settings, key);
           const parsed = parseUploadsSetting(arr, labels);
           if (parsed.length) {
-            return { images: parsed, key, labelKey: labels.length ? key : null };
+            return { images: parsed, source: key };
           }
         }
 
@@ -781,7 +502,7 @@
         if (!sources.length) {
           const uploads = detectUploadsInSettings(settings);
           if (uploads?.images.length) {
-            sources.push({ images: uploads.images, source: uploads.key });
+            sources.push({ images: uploads.images, source: uploads.source });
           }
         }
 
@@ -789,22 +510,13 @@
 
         if (!firstSource) {
           resetView();
-          updateSourceStatus(
-            'Nenhuma imagem configurada. Utilize o parametro "Upload de Arquivos" e salve o widget.',
-            'warning'
-          );
+          console.warn('Nenhuma imagem configurada nas configuracoes do widget.');
           return;
         }
 
         state.images = firstSource.images.slice(0, MAX_FILES);
         state.activeIndex = 0;
         renderSlides();
-
-        const message =
-          `${state.images.length} ` +
-          `${state.images.length === 1 ? 'imagem carregada' : 'imagens carregadas'} ` +
-          `(${firstSource.source}).`;
-        updateSourceStatus(message, 'success');
       };
 
       const startPointer = (event) => {
@@ -817,7 +529,7 @@
       };
 
       const movePointer = (event) => {
-        if (!pointerState.active) return;
+        if (!pointerState.active || pointerState.pointerId !== event.pointerId) return;
         pointerState.deltaX = event.clientX - pointerState.startX;
       };
 
@@ -848,31 +560,76 @@
         pointerState.pointerId = null;
       };
 
-      const startPan = (event) => {
-        if (zoomState.scale === 1) return;
-        zoomState.panning = true;
-        zoomState.pointerId = event.pointerId;
-        zoomState.lastX = event.clientX;
-        zoomState.lastY = event.clientY;
+      const distanceBetweenPointers = () => {
+        if (lightboxPointers.size < 2) return 0;
+        const points = Array.from(lightboxPointers.values());
+        const [p1, p2] = points;
+        return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+      };
+
+      const handleLightboxPointerDown = (event) => {
+        lightboxPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+        if (lightboxPointers.size === 2) {
+          pinchState.active = true;
+          pinchState.startDistance = distanceBetweenPointers();
+          pinchState.startScale = zoomState.scale;
+        } else if (lightboxPointers.size === 1 && zoomState.scale > 1) {
+          zoomState.panning = true;
+          zoomState.pointerId = event.pointerId;
+          zoomState.lastX = event.clientX;
+          zoomState.lastY = event.clientY;
+        }
+
         lightboxCanvas.setPointerCapture?.(event.pointerId);
       };
 
-      const movePan = (event) => {
-        if (!zoomState.panning || zoomState.pointerId !== event.pointerId) return;
-        const dx = event.clientX - zoomState.lastX;
-        const dy = event.clientY - zoomState.lastY;
-        zoomState.lastX = event.clientX;
-        zoomState.lastY = event.clientY;
-        zoomState.translateX += dx;
-        zoomState.translateY += dy;
-        applyZoom();
+      const handleLightboxPointerMove = (event) => {
+        if (!lightboxPointers.has(event.pointerId)) return;
+        lightboxPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+        if (pinchState.active && lightboxPointers.size >= 2) {
+          const distance = distanceBetweenPointers();
+          if (distance && pinchState.startDistance) {
+            const ratio = distance / pinchState.startDistance;
+            const nextScale = Math.min(MAX_ZOOM, Math.max(1, pinchState.startScale * ratio));
+            zoomState.scale = nextScale;
+            applyZoom();
+          }
+          return;
+        }
+
+        if (zoomState.panning && zoomState.pointerId === event.pointerId) {
+          const dx = event.clientX - zoomState.lastX;
+          const dy = event.clientY - zoomState.lastY;
+          zoomState.lastX = event.clientX;
+          zoomState.lastY = event.clientY;
+          zoomState.translateX += dx;
+          zoomState.translateY += dy;
+          applyZoom();
+        }
       };
 
-      const endPan = (event) => {
-        if (zoomState.pointerId !== event.pointerId) return;
-        zoomState.panning = false;
-        zoomState.pointerId = null;
+      const handleLightboxPointerEnd = (event) => {
+        lightboxPointers.delete(event.pointerId);
+
+        if (pinchState.active && lightboxPointers.size < 2) {
+          pinchState.active = false;
+          pinchState.startDistance = 0;
+        }
+
+        if (zoomState.panning && zoomState.pointerId === event.pointerId) {
+          zoomState.panning = false;
+          zoomState.pointerId = null;
+        }
+
         lightboxCanvas.releasePointerCapture?.(event.pointerId);
+      };
+
+      const handleWheelZoom = (event) => {
+        event.preventDefault();
+        const direction = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+        updateZoom(direction);
       };
 
       const setupJotformBridge = () => {
@@ -893,20 +650,38 @@
         });
       };
 
+      const handleOrientationClass = () => {
+        const mq = window.matchMedia('(orientation: landscape)');
+        const apply = () => {
+          const isLandscape = mq.matches || window.innerWidth > window.innerHeight;
+          document.body.classList.toggle('orientation-landscape', isLandscape);
+        };
+        apply();
+        if (mq.addEventListener) {
+          mq.addEventListener('change', () => {
+            apply();
+            updateTrackPosition();
+          });
+        } else if (mq.addListener) {
+          mq.addListener(() => {
+            apply();
+            updateTrackPosition();
+          });
+        }
+        window.addEventListener('resize', () => {
+          apply();
+          updateTrackPosition();
+        });
+      };
+
       const bootstrap = () => {
+        handleOrientationClass();
+
         if (!window.JFCustomWidget) {
-          updateSourceStatus(
-            'Modo demo: defina window.demoImages = [{ name, url }] antes deste script para testar localmente.',
-            'info'
-          );
           if (Array.isArray(window.demoImages) && window.demoImages.length) {
             state.images = window.demoImages.slice(0, MAX_FILES);
             state.activeIndex = 0;
             renderSlides();
-            updateSourceStatus(
-              `${state.images.length} imagem(ns) carregada(s) via demo.`,
-              'success'
-            );
           } else {
             resetView();
           }
@@ -914,13 +689,11 @@
         setupJotformBridge();
       };
 
-      prevButton.addEventListener('click', () => {
-        goToSlide((state.activeIndex ?? 0) - 1);
-      });
-
-      nextButton.addEventListener('click', () => {
-        goToSlide((state.activeIndex ?? 0) + 1);
-      });
+      viewport.addEventListener('pointerdown', startPointer);
+      viewport.addEventListener('pointermove', movePointer);
+      viewport.addEventListener('pointerup', endPointer);
+      viewport.addEventListener('pointercancel', cancelPointer);
+      viewport.addEventListener('pointerleave', cancelPointer);
 
       document.addEventListener('keydown', (event) => {
         if (event.key === 'ArrowLeft') {
@@ -932,35 +705,19 @@
         }
       });
 
-      viewport.addEventListener('pointerdown', startPointer);
-      viewport.addEventListener('pointermove', movePointer);
-      viewport.addEventListener('pointerup', endPointer);
-      viewport.addEventListener('pointercancel', cancelPointer);
-      viewport.addEventListener('pointerleave', cancelPointer);
+      lightboxCanvas.addEventListener('pointerdown', handleLightboxPointerDown);
+      lightboxCanvas.addEventListener('pointermove', handleLightboxPointerMove);
+      lightboxCanvas.addEventListener('pointerup', handleLightboxPointerEnd);
+      lightboxCanvas.addEventListener('pointerleave', handleLightboxPointerEnd);
+      lightboxCanvas.addEventListener('pointercancel', handleLightboxPointerEnd);
+      lightboxCanvas.addEventListener('wheel', handleWheelZoom, { passive: false });
 
-      lightboxCanvas.addEventListener('pointerdown', startPan);
-      lightboxCanvas.addEventListener('pointermove', movePan);
-      lightboxCanvas.addEventListener('pointerup', endPan);
-      lightboxCanvas.addEventListener('pointerleave', endPan);
-      lightboxCanvas.addEventListener('pointercancel', endPan);
-
-      lightboxCanvas.addEventListener('wheel', (event) => {
-        event.preventDefault();
-        const direction = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-        updateZoom(direction);
-      }, { passive: false });
-
-      zoomInBtn.addEventListener('click', () => updateZoom(ZOOM_STEP));
-      zoomOutBtn.addEventListener('click', () => updateZoom(-ZOOM_STEP));
-      resetZoomBtn.addEventListener('click', () => resetZoom());
       closeLightboxBtn.addEventListener('click', closeLightbox);
       lightbox.addEventListener('click', (event) => {
         if (event.target === lightbox) {
           closeLightbox();
         }
       });
-
-      window.addEventListener('resize', updateTrackPosition);
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', bootstrap);
