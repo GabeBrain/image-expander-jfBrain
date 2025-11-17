@@ -147,10 +147,12 @@
       width: 100%;
       height: 100%;
       transition: transform 0.35s ease;
+      will-change: transform;
     }
 
     .carousel__slide {
       flex: 0 0 100%;
+      min-width: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -165,6 +167,12 @@
         0 14px 40px rgba(15, 35, 75, 0.35),
         0 2px 6px rgba(11, 24, 54, 0.2);
       background: #0e172a;
+      transition: transform 0.2s ease;
+      cursor: zoom-in;
+    }
+
+    .carousel__slide img:active {
+      transform: scale(0.98);
     }
 
     .carousel__placeholder {
@@ -243,6 +251,106 @@
       display: none !important;
     }
 
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 5, 15, 0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 999;
+    }
+
+    .lightbox__panel {
+      background: #050913;
+      border-radius: 18px;
+      width: min(960px, 100%);
+      min-height: min(85vh, 720px);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      color: #f4f6ff;
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.6);
+    }
+
+    .lightbox__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .lightbox__header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .lightbox__close {
+      border: none;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+
+    .lightbox__canvas {
+      flex: 1;
+      background: radial-gradient(circle, rgba(9, 14, 28, 0.92), rgba(3, 5, 12, 0.95));
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    .lightbox__canvas img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transform-origin: center;
+      transition: transform 0.1s ease-out;
+      cursor: grab;
+    }
+
+    .lightbox__canvas img:active {
+      cursor: grabbing;
+    }
+
+    .lightbox__controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .lightbox__controls button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .lightbox__controls button.primary {
+      background: #1c7dff;
+    }
+
+    .lightbox__controls span {
+      font-variant-numeric: tabular-nums;
+      min-width: 56px;
+      text-align: center;
+    }
+
     @media (max-width: 720px) {
       body {
         padding: 16px;
@@ -270,6 +378,15 @@
 
       .carousel__nav--next {
         right: 16px;
+      }
+
+      .lightbox {
+        padding: 16px;
+      }
+
+      .lightbox__panel {
+        padding: 16px;
+        min-height: 80vh;
       }
     }
   </style>
@@ -306,10 +423,30 @@
     </section>
   </main>
 
+  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-labelledby="lightboxCaption">
+    <div class="lightbox__panel">
+      <div class="lightbox__header">
+        <h2 id="lightboxCaption">Visualizando imagem</h2>
+        <button id="closeLightbox" class="lightbox__close" aria-label="Fechar visualizacao">&times;</button>
+      </div>
+      <div id="lightboxCanvas" class="lightbox__canvas">
+        <img id="lightboxImage" alt="Imagem ampliada" draggable="false" />
+      </div>
+      <div class="lightbox__controls">
+        <button id="zoomOutBtn" aria-label="Diminuir zoom">-</button>
+        <span id="zoomLevel">100%</span>
+        <button id="zoomInBtn" class="primary" aria-label="Aumentar zoom">+</button>
+        <button id="resetZoomBtn" aria-label="Reiniciar zoom">Reset</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     (() => {
       const MAX_FILES = 15;
       const SWIPE_THRESHOLD = 45;
+      const MAX_ZOOM = 5;
+      const ZOOM_STEP = 0.25;
 
       const imageInput = document.getElementById('imageInput');
       const feedback = document.getElementById('feedback');
@@ -322,6 +459,16 @@
       const status = document.getElementById('carouselStatus');
       const imageName = document.getElementById('imageName');
 
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImage = document.getElementById('lightboxImage');
+      const lightboxCaption = document.getElementById('lightboxCaption');
+      const lightboxCanvas = document.getElementById('lightboxCanvas');
+      const closeLightboxBtn = document.getElementById('closeLightbox');
+      const zoomInBtn = document.getElementById('zoomInBtn');
+      const zoomOutBtn = document.getElementById('zoomOutBtn');
+      const resetZoomBtn = document.getElementById('resetZoomBtn');
+      const zoomLevel = document.getElementById('zoomLevel');
+
       const state = {
         images: [],
         activeIndex: null,
@@ -332,6 +479,16 @@
         startX: 0,
         deltaX: 0,
         pointerId: null,
+      };
+
+      const zoomState = {
+        scale: 1,
+        translateX: 0,
+        translateY: 0,
+        pointerId: null,
+        panning: false,
+        lastX: 0,
+        lastY: 0,
       };
 
       const setFeedback = (message = '', type = 'info') => {
@@ -380,7 +537,9 @@
           return;
         }
 
-        track.style.transform = `translateX(-${state.activeIndex * 100}%)`;
+        const slideWidth = viewport.clientWidth;
+        const offset = slideWidth * (state.activeIndex ?? 0);
+        track.style.transform = `translateX(-${offset}px)`;
       };
 
       const goToSlide = (index) => {
@@ -390,6 +549,52 @@
         state.activeIndex = nextIndex;
         updateTrackPosition();
         updateMeta();
+      };
+
+      const openLightbox = (index) => {
+        if (!state.images[index]) return;
+        state.activeIndex = index;
+        updateTrackPosition();
+        updateMeta();
+
+        lightboxImage.src = state.images[index].url;
+        lightboxImage.alt = state.images[index].name;
+        lightboxCaption.textContent = state.images[index].name;
+        lightbox.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        resetZoom(true);
+      };
+
+      const closeLightbox = () => {
+        lightbox.classList.add('hidden');
+        document.body.style.overflow = '';
+      };
+
+      const applyZoom = () => {
+        lightboxImage.style.transform =
+          `translate(${zoomState.translateX}px, ${zoomState.translateY}px) scale(${zoomState.scale})`;
+        zoomLevel.textContent = `${Math.round(zoomState.scale * 100)}%`;
+      };
+
+      const resetZoom = (initial = false) => {
+        zoomState.scale = 1;
+        zoomState.translateX = 0;
+        zoomState.translateY = 0;
+        if (!initial) {
+          zoomState.pointerId = null;
+          zoomState.panning = false;
+        }
+        applyZoom();
+      };
+
+      const updateZoom = (step) => {
+        const nextScale = Math.min(MAX_ZOOM, Math.max(1, zoomState.scale + step));
+        if (nextScale === 1) {
+          zoomState.translateX = 0;
+          zoomState.translateY = 0;
+        }
+        zoomState.scale = nextScale;
+        applyZoom();
       };
 
       const renderSlides = () => {
@@ -414,6 +619,8 @@
           img.src = url;
           img.alt = name;
           img.draggable = false;
+
+          img.addEventListener('click', () => openLightbox(index));
 
           slide.appendChild(img);
           track.appendChild(slide);
@@ -542,6 +749,33 @@
         pointerState.pointerId = null;
       };
 
+      const startPan = (event) => {
+        if (zoomState.scale === 1) return;
+        zoomState.panning = true;
+        zoomState.pointerId = event.pointerId;
+        zoomState.lastX = event.clientX;
+        zoomState.lastY = event.clientY;
+        lightboxCanvas.setPointerCapture?.(event.pointerId);
+      };
+
+      const movePan = (event) => {
+        if (!zoomState.panning || zoomState.pointerId !== event.pointerId) return;
+        const dx = event.clientX - zoomState.lastX;
+        const dy = event.clientY - zoomState.lastY;
+        zoomState.lastX = event.clientX;
+        zoomState.lastY = event.clientY;
+        zoomState.translateX += dx;
+        zoomState.translateY += dy;
+        applyZoom();
+      };
+
+      const endPan = (event) => {
+        if (zoomState.pointerId !== event.pointerId) return;
+        zoomState.panning = false;
+        zoomState.pointerId = null;
+        lightboxCanvas.releasePointerCapture?.(event.pointerId);
+      };
+
       prevButton.addEventListener('click', () => {
         goToSlide((state.activeIndex ?? 0) - 1);
       });
@@ -556,6 +790,8 @@
           goToSlide((state.activeIndex ?? 0) - 1);
         } else if (event.key === 'ArrowRight') {
           goToSlide((state.activeIndex ?? 0) + 1);
+        } else if (event.key === 'Escape' && !lightbox.classList.contains('hidden')) {
+          closeLightbox();
         }
       });
 
@@ -565,10 +801,34 @@
       viewport.addEventListener('pointercancel', cancelPointer);
       viewport.addEventListener('pointerleave', cancelPointer);
 
+      lightboxCanvas.addEventListener('pointerdown', startPan);
+      lightboxCanvas.addEventListener('pointermove', movePan);
+      lightboxCanvas.addEventListener('pointerup', endPan);
+      lightboxCanvas.addEventListener('pointerleave', endPan);
+      lightboxCanvas.addEventListener('pointercancel', endPan);
+
+      lightboxCanvas.addEventListener('wheel', (event) => {
+        event.preventDefault();
+        const direction = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+        updateZoom(direction);
+      }, { passive: false });
+
+      zoomInBtn.addEventListener('click', () => updateZoom(ZOOM_STEP));
+      zoomOutBtn.addEventListener('click', () => updateZoom(-ZOOM_STEP));
+      resetZoomBtn.addEventListener('click', () => resetZoom());
+      closeLightboxBtn.addEventListener('click', closeLightbox);
+      lightbox.addEventListener('click', (event) => {
+        if (event.target === lightbox) {
+          closeLightbox();
+        }
+      });
+
       imageInput.addEventListener('change', (event) => {
         const files = Array.from(event.target.files || []);
         handleSelection(files);
       });
+
+      window.addEventListener('resize', updateTrackPosition);
 
       resetView();
     })();
