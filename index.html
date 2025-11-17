@@ -66,63 +66,37 @@
       font-size: 0.98rem;
     }
 
-    .upload {
-      background: var(--surface-muted);
-      border-radius: 12px;
-      padding: 20px;
-      border: 1px dashed var(--border);
-    }
-
-    .upload label {
-      font-weight: 600;
-      display: block;
-      margin-bottom: 8px;
-    }
-
-    .upload input[type="file"] {
-      width: 100%;
-      padding: 12px;
+    .source-card {
       border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface);
+      border-radius: 12px;
+      background: var(--surface-muted);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       font-size: 0.95rem;
+      line-height: 1.4;
     }
 
-    .hint {
-      margin: 8px 0 0;
-      color: #5a678c;
-      font-size: 0.9rem;
-    }
-
-    .feedback {
-      margin-top: 12px;
-      font-size: 0.95rem;
-      padding: 10px 12px;
-      border-radius: 8px;
-      background: rgba(0, 85, 255, 0.08);
-      border: 1px solid rgba(0, 85, 255, 0.2);
-    }
-
-    .feedback.info {
+    .source-card strong {
       color: var(--accent-strong);
     }
 
-    .feedback.success {
-      color: var(--success);
-      background: rgba(30, 142, 62, 0.08);
-      border-color: rgba(30, 142, 62, 0.3);
+    .source-card__status {
+      margin: 0;
+      font-weight: 600;
     }
 
-    .feedback.warning {
+    .source-card__status[data-tone="info"] {
+      color: var(--accent-strong);
+    }
+
+    .source-card__status[data-tone="warning"] {
       color: var(--warning);
-      background: rgba(180, 106, 0, 0.08);
-      border-color: rgba(180, 106, 0, 0.25);
     }
 
-    .feedback.error {
-      color: var(--error);
-      background: rgba(198, 40, 40, 0.08);
-      border-color: rgba(198, 40, 40, 0.25);
+    .source-card__status[data-tone="success"] {
+      color: var(--success);
     }
 
     .carousel {
@@ -395,14 +369,13 @@
   <main class="widget">
     <header>
       <h1>Image Expander - JF Brain</h1>
-      <p>Carregue ate 15 imagens e deslize para os lados para navegar pelo carrossel.</p>
+      <p>Carregue ate 15 imagens em Configuracoes do Widget e disponibilize-as para o respondente com zoom e gesto de swipe.</p>
     </header>
 
-    <section class="upload">
-      <label for="imageInput">Selecione seus arquivos</label>
-      <input type="file" id="imageInput" accept="image/*" multiple />
-      <p class="hint">Formatos aceitos: JPG, PNG, GIF, WebP - Limite de 15 imagens por envio.</p>
-      <p id="feedback" class="feedback info" aria-live="polite">Escolha suas imagens para comecar.</p>
+    <section class="source-card">
+      <strong>Como configurar:</strong>
+      <p>Abra as Configuracoes do Widget, use o parametro <em>"Upload de Arquivos"</em> (ate 15 imagens) e, opcionalmente, informe nomes personalizados linha a linha no parametro <em>"Labels das Imagens"</em>.</p>
+      <p id="sourceStatus" class="source-card__status" data-tone="info">Aguardando dados do widget...</p>
     </section>
 
     <section class="carousel" aria-live="polite">
@@ -410,7 +383,7 @@
       <div id="carouselViewport" class="carousel__viewport">
         <div id="carouselTrack" class="carousel__track" role="list"></div>
         <p id="placeholder" class="carousel__placeholder">
-          Faca upload das imagens e deslize para ver cada visualizacao. Use os botoes ou arraste para a esquerda/direita.
+          As imagens configuradas no widget aparecerao aqui para o respondente deslizar e ampliar.
         </p>
       </div>
       <button id="nextButton" class="carousel__nav carousel__nav--next" aria-label="Proxima imagem">&rarr;</button>
@@ -448,8 +421,6 @@
       const MAX_ZOOM = 5;
       const ZOOM_STEP = 0.25;
 
-      const imageInput = document.getElementById('imageInput');
-      const feedback = document.getElementById('feedback');
       const track = document.getElementById('carouselTrack');
       const viewport = document.getElementById('carouselViewport');
       const placeholder = document.getElementById('placeholder');
@@ -458,6 +429,7 @@
       const counter = document.getElementById('carouselCounter');
       const status = document.getElementById('carouselStatus');
       const imageName = document.getElementById('imageName');
+      const sourceStatus = document.getElementById('sourceStatus');
 
       const lightbox = document.getElementById('lightbox');
       const lightboxImage = document.getElementById('lightboxImage');
@@ -491,23 +463,20 @@
         lastY: 0,
       };
 
-      const setFeedback = (message = '', type = 'info') => {
-        feedback.textContent = message;
-        feedback.className = `feedback ${type}`.trim();
+      let jotformBridgeReady = false;
+
+      const updateSourceStatus = (message, tone = 'info') => {
+        if (!sourceStatus) return;
+        sourceStatus.textContent = message;
+        sourceStatus.dataset.tone = tone;
       };
 
-      const resetView = () => {
-        state.images = [];
-        state.activeIndex = null;
-        track.innerHTML = '';
-        track.style.transform = 'translateX(0)';
-        placeholder.classList.remove('hidden');
-        counter.textContent = '0 / 0';
-        status.textContent = 'Nenhuma imagem carregada.';
-        prevButton.disabled = true;
-        nextButton.disabled = true;
-        imageName.textContent = '';
-        imageName.classList.add('hidden');
+      const serializeImages = () => JSON.stringify(state.images);
+
+      const sendCurrentValue = (context = 'sync') => {
+        if (window.JFCustomWidget?.sendData) {
+          window.JFCustomWidget.sendData({ value: serializeImages(), context });
+        }
       };
 
       const updateMeta = () => {
@@ -636,76 +605,98 @@
         updateMeta();
       };
 
-      const readAsDataUrl = (file) =>
-        new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve({ name: file.name, url: reader.result });
-          reader.onerror = () => reject(new Error(`Erro ao processar ${file.name}`));
-          reader.readAsDataURL(file);
-        });
+      const resetView = () => {
+        state.images = [];
+        state.activeIndex = null;
+        track.innerHTML = '';
+        updateTrackPosition();
+        updateMeta();
+        placeholder.classList.remove('hidden');
+      };
 
-      const handleSelection = async (fileList) => {
-        if (!fileList.length) {
-          resetView();
-          setFeedback('Nenhum arquivo selecionado.', 'info');
-          return;
-        }
-
-        const validImages = [];
-        let invalidCount = 0;
-
-        fileList.forEach((file) => {
-          if (file.type.startsWith('image/')) {
-            validImages.push(file);
-          } else {
-            invalidCount += 1;
-          }
-        });
-
-        if (!validImages.length) {
-          resetView();
-          imageInput.value = '';
-          setFeedback('Selecione apenas arquivos de imagem (JPG, PNG, GIF, WebP).', 'error');
-          return;
-        }
-
-        let trimmed = false;
-        if (validImages.length > MAX_FILES) {
-          trimmed = true;
-        }
-
-        const filesToProcess = validImages.slice(0, MAX_FILES);
-
+      const parseImageList = (raw) => {
+        if (!raw) return [];
         try {
-          placeholder.textContent = 'Carregando imagens...';
-          placeholder.classList.remove('hidden');
-
-          const previews = await Promise.all(filesToProcess.map(readAsDataUrl));
-          state.images = previews;
-          state.activeIndex = 0;
-          renderSlides();
-
-          let message = '';
-          let statusType = 'success';
-
-          if (invalidCount) {
-            message += `${invalidCount} arquivo(s) ignorado(s) por nao serem imagens. `;
-            statusType = 'warning';
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map((item, index) => {
+                if (!item) return null;
+                const url = item.url || item.value;
+                if (!url) return null;
+                const name = item.name || item.label || `Imagem ${index + 1}`;
+                return { name, url };
+              })
+              .filter(Boolean);
           }
-
-          if (trimmed) {
-            message += 'Limite de 15 imagens aplicado. ';
-            statusType = 'warning';
-          }
-
-          message += `${previews.length} ${previews.length === 1 ? 'imagem pronta' : 'imagens prontas'} para visualizacao.`;
-
-          setFeedback(message.trim(), statusType);
-        } catch (error) {
-          console.error(error);
-          resetView();
-          setFeedback('Nao foi possivel processar os arquivos selecionados. Tente novamente.', 'error');
+        } catch (_) {
+          return [];
         }
+        return [];
+      };
+
+      const parseUploadsSetting = (rawUploads, rawLabels) => {
+        if (!rawUploads) return [];
+        let uploads = [];
+
+        if (typeof rawUploads === 'string') {
+          try {
+            const parsed = JSON.parse(rawUploads);
+            if (Array.isArray(parsed)) {
+              uploads = parsed;
+            }
+          } catch (_) {
+            uploads = rawUploads.split(',').map((item) => item.trim()).filter(Boolean).map((url) => ({
+              value: url,
+              originalName: url.split('/').pop() || 'Imagem',
+            }));
+          }
+        } else if (Array.isArray(rawUploads)) {
+          uploads = rawUploads;
+        } else {
+          uploads = [rawUploads];
+        }
+
+        const labels = typeof rawLabels === 'string'
+          ? rawLabels.split('\n').map((line) => line.trim())
+          : [];
+
+        return uploads
+          .map((file, index) => {
+            if (!file) return null;
+            const url = file.value || file.url;
+            if (!url) return null;
+            const name = labels[index] || file.originalName || file.name || `Imagem ${index + 1}`;
+            return { name, url };
+          })
+          .filter(Boolean);
+      };
+
+      const applyImageSources = (value, settings = {}) => {
+        const sources = [
+          parseImageList(value),
+          parseImageList(settings.imageManifest),
+          parseUploadsSetting(settings.galleryUploads, settings.imageLabels),
+        ];
+
+        const images = sources.find((list) => Array.isArray(list) && list.length) || [];
+
+        if (!images.length) {
+          resetView();
+          updateSourceStatus(
+            'Nenhuma imagem configurada. Adicione arquivos no parametro "Upload de Arquivos" do widget.',
+            'warning'
+          );
+          return;
+        }
+
+        state.images = images.slice(0, MAX_FILES);
+        state.activeIndex = 0;
+        renderSlides();
+        updateSourceStatus(
+          `${state.images.length} ${state.images.length === 1 ? 'imagem carregada' : 'imagens carregadas'} via configuracao.`,
+          'success'
+        );
       };
 
       const startPointer = (event) => {
@@ -776,6 +767,45 @@
         lightboxCanvas.releasePointerCapture?.(event.pointerId);
       };
 
+      const setupJotformBridge = () => {
+        if (jotformBridgeReady || !window.JFCustomWidget) return;
+        jotformBridgeReady = true;
+
+        JFCustomWidget.subscribe('ready', ({ value } = {}) => {
+          const settings = window.JFCustomWidget.getWidgetSettings?.() || {};
+          applyImageSources(value, settings);
+          sendCurrentValue('ready');
+        });
+
+        JFCustomWidget.subscribe('submit', () => {
+          JFCustomWidget.sendSubmit({
+            valid: true,
+            value: serializeImages(),
+          });
+        });
+      };
+
+      const bootstrap = () => {
+        if (!window.JFCustomWidget) {
+          updateSourceStatus(
+            'Modo demo: defina window.demoImages = [{ name, url }] antes deste script para testar localmente.',
+            'info'
+          );
+          if (Array.isArray(window.demoImages) && window.demoImages.length) {
+            state.images = window.demoImages.slice(0, MAX_FILES);
+            state.activeIndex = 0;
+            renderSlides();
+            updateSourceStatus(
+              `${state.images.length} imagem(ns) carregada(s) via demo.`,
+              'success'
+            );
+          } else {
+            resetView();
+          }
+        }
+        setupJotformBridge();
+      };
+
       prevButton.addEventListener('click', () => {
         goToSlide((state.activeIndex ?? 0) - 1);
       });
@@ -785,7 +815,6 @@
       });
 
       document.addEventListener('keydown', (event) => {
-        if (!state.images.length) return;
         if (event.key === 'ArrowLeft') {
           goToSlide((state.activeIndex ?? 0) - 1);
         } else if (event.key === 'ArrowRight') {
@@ -823,15 +852,23 @@
         }
       });
 
-      imageInput.addEventListener('change', (event) => {
-        const files = Array.from(event.target.files || []);
-        handleSelection(files);
-      });
-
       window.addEventListener('resize', updateTrackPosition);
 
-      resetView();
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootstrap);
+      } else {
+        bootstrap();
+      }
+
+      window.onJotformWidgetReady = () => {
+        setupJotformBridge();
+      };
+
+      if (window.JFCustomWidget) {
+        setupJotformBridge();
+      }
     })();
   </script>
+  <script src="https://js.jotform.com/JotFormCustomWidget.min.js?onload=onJotformWidgetReady"></script>
 </body>
 </html>
