@@ -635,68 +635,176 @@
         return [];
       };
 
-      const parseUploadsSetting = (rawUploads, rawLabels) => {
-        if (!rawUploads) return [];
-        let uploads = [];
-
-        if (typeof rawUploads === 'string') {
+      const normalizeArrayValue = (raw) => {
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'object' && Array.isArray(raw.files)) return raw.files;
+        if (typeof raw === 'object' && Array.isArray(raw.list)) return raw.list;
+        if (typeof raw === 'string') {
+          const trimmed = raw.trim();
+          if (!trimmed) return [];
+          // Try JSON array first
           try {
-            const parsed = JSON.parse(rawUploads);
-            if (Array.isArray(parsed)) {
-              uploads = parsed;
-            }
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) return parsed;
           } catch (_) {
-            uploads = rawUploads.split(',').map((item) => item.trim()).filter(Boolean).map((url) => ({
-              value: url,
-              originalName: url.split('/').pop() || 'Imagem',
-            }));
+            // not JSON
           }
-        } else if (Array.isArray(rawUploads)) {
-          uploads = rawUploads;
-        } else {
-          uploads = [rawUploads];
+          if (trimmed.includes('\n')) {
+            return trimmed.split('\n').map((line) => line.trim()).filter(Boolean);
+          }
+          if (trimmed.includes(',')) {
+            return trimmed.split(',').map((line) => line.trim()).filter(Boolean);
+          }
+          return [trimmed];
+        }
+        return [raw];
+      };
+
+      const extractLabels = (settings, primaryKey) => {
+        if (!settings) return [];
+        const preferredKeys = [
+          'imageLabels',
+          'labels',
+          'names',
+          'nomes',
+          'titulos',
+        ];
+
+        if (primaryKey) {
+          preferredKeys.push(`${primaryKey}Labels`);
+          preferredKeys.push(`${primaryKey}Label`);
+          preferredKeys.push(`${primaryKey}Names`);
         }
 
-        const labels = typeof rawLabels === 'string'
-          ? rawLabels.split('\n').map((line) => line.trim())
-          : [];
+        const candidates = Object.keys(settings)
+          .filter((key) => preferredKeys.some((hint) => key.toLowerCase().includes(hint)))
+          .concat(preferredKeys);
+
+        for (const key of candidates) {
+          if (!key || settings[key] == null) continue;
+          const arr = normalizeArrayValue(settings[key]);
+          if (arr.length) {
+            return arr.map((item) => (typeof item === 'string' ? item.trim() : '')).filter((line) => line.length);
+          }
+        }
+
+        return [];
+      };
+
+      const fileUrlFromItem = (item) => {
+        if (!item) return '';
+        if (typeof item === 'string') return item;
+        return (
+          item.url ||
+          item.value ||
+          item.fileUrl ||
+          item.fileurl ||
+          item.file_path ||
+          item.filePath ||
+          item.path ||
+          item.link ||
+          ''
+        );
+      };
+
+      const fileNameFromItem = (item, fallback = '') => {
+        if (!item) return fallback;
+        if (typeof item === 'string') {
+          const parts = item.split('/');
+          return parts[parts.length - 1] || fallback;
+        }
+        return (
+          item.name ||
+          item.originalName ||
+          item.label ||
+          item.filename ||
+          item.title ||
+          fallback
+        );
+      };
+
+      const parseUploadsSetting = (rawUploads, labels = []) => {
+        const uploads = normalizeArrayValue(rawUploads);
+        if (!uploads.length) return [];
 
         return uploads
-          .map((file, index) => {
-            if (!file) return null;
-            const url = file.value || file.url;
+          .map((entry, index) => {
+            const url = fileUrlFromItem(entry);
             if (!url) return null;
-            const name = labels[index] || file.originalName || file.name || `Imagem ${index + 1}`;
-            return { name, url };
+            const nameFromLabel = labels[index] || '';
+            const fallbackName = fileNameFromItem(entry, `Imagem ${index + 1}`);
+            return {
+              name: nameFromLabel || fallbackName,
+              url,
+            };
           })
           .filter(Boolean);
       };
 
+      const detectUploadsInSettings = (settings = {}) => {
+        const entries = Object.entries(settings);
+        const hints = ['upload', 'file', 'imagem', 'image', 'galeria', 'gallery', 'arquivo'];
+
+        for (const [key, value] of entries) {
+          if (value == null) continue;
+          const normalizedKey = key.toLowerCase();
+          const looksLikeUpload = hints.some((hint) => normalizedKey.includes(hint));
+
+          const arr = normalizeArrayValue(value);
+          const hasFileShape = arr.some((item) => {
+            if (!item) return false;
+            if (typeof item === 'string') return item.startsWith('http') || item.includes('/');
+            return Boolean(fileUrlFromItem(item));
+          });
+
+          if (!arr.length || (!looksLikeUpload && !hasFileShape)) {
+            continue;
+          }
+
+          const labels = extractLabels(settings, key);
+          const parsed = parseUploadsSetting(arr, labels);
+          if (parsed.length) {
+            return { images: parsed, key, labelKey: labels.length ? key : null };
+          }
+        }
+
+        return null;
+      };
+
       const applyImageSources = (value, settings = {}) => {
         const sources = [
-          parseImageList(value),
-          parseImageList(settings.imageManifest),
-          parseUploadsSetting(settings.galleryUploads, settings.imageLabels),
-        ];
+          { images: parseImageList(value), source: 'valor salvo' },
+          { images: parseImageList(settings.imageManifest), source: 'imageManifest' },
+        ].filter((entry) => entry.images.length);
 
-        const images = sources.find((list) => Array.isArray(list) && list.length) || [];
+        if (!sources.length) {
+          const uploads = detectUploadsInSettings(settings);
+          if (uploads?.images.length) {
+            sources.push({ images: uploads.images, source: uploads.key });
+          }
+        }
 
-        if (!images.length) {
+        const firstSource = sources.find((entry) => entry.images.length);
+
+        if (!firstSource) {
           resetView();
           updateSourceStatus(
-            'Nenhuma imagem configurada. Adicione arquivos no parametro "Upload de Arquivos" do widget.',
+            'Nenhuma imagem configurada. Utilize o parametro "Upload de Arquivos" e salve o widget.',
             'warning'
           );
           return;
         }
 
-        state.images = images.slice(0, MAX_FILES);
+        state.images = firstSource.images.slice(0, MAX_FILES);
         state.activeIndex = 0;
         renderSlides();
-        updateSourceStatus(
-          `${state.images.length} ${state.images.length === 1 ? 'imagem carregada' : 'imagens carregadas'} via configuracao.`,
-          'success'
-        );
+
+        const message =
+          `${state.images.length} ` +
+          `${state.images.length === 1 ? 'imagem carregada' : 'imagens carregadas'} ` +
+          `(${firstSource.source}).`;
+        updateSourceStatus(message, 'success');
       };
 
       const startPointer = (event) => {
