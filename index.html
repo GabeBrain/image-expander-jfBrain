@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Expander - JF Brain</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-start: #0b1220;
+      --bg-end: #192942;
+      --surface: #ffffff;
+      --surface-muted: #f4f6fb;
+      --border: #d9deea;
+      --text: #111c3a;
+      --accent: #0055ff;
+      --accent-strong: #002d94;
+      --success: #1e8e3e;
+      --warning: #b46a00;
+      --error: #c62828;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at top, var(--bg-start), var(--bg-end));
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+
+    main.widget {
+      width: min(960px, 100%);
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow:
+        0 20px 60px rgba(4, 7, 18, 0.35),
+        0 1px 4px rgba(3, 7, 18, 0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 1.65rem;
+      color: var(--accent-strong);
+    }
+
+    header p {
+      margin: 0;
+      color: #506088;
+      font-size: 0.98rem;
+    }
+
+    .upload {
+      background: var(--surface-muted);
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px dashed var(--border);
+    }
+
+    .upload label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .upload input[type="file"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      font-size: 0.95rem;
+    }
+
+    .hint {
+      margin: 8px 0 0;
+      color: #5a678c;
+      font-size: 0.9rem;
+    }
+
+    .feedback {
+      margin-top: 12px;
+      font-size: 0.95rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(0, 85, 255, 0.08);
+      border: 1px solid rgba(0, 85, 255, 0.2);
+    }
+
+    .feedback.info {
+      color: var(--accent-strong);
+    }
+
+    .feedback.success {
+      color: var(--success);
+      background: rgba(30, 142, 62, 0.08);
+      border-color: rgba(30, 142, 62, 0.3);
+    }
+
+    .feedback.warning {
+      color: var(--warning);
+      background: rgba(180, 106, 0, 0.08);
+      border-color: rgba(180, 106, 0, 0.25);
+    }
+
+    .feedback.error {
+      color: var(--error);
+      background: rgba(198, 40, 40, 0.08);
+      border-color: rgba(198, 40, 40, 0.25);
+    }
+
+    .tab-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .tab-button {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .tab-button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .tab-button.active {
+      background: var(--accent);
+      color: var(--surface);
+      border-color: var(--accent);
+      box-shadow: 0 6px 18px rgba(0, 85, 255, 0.35);
+    }
+
+    .preview {
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      background: var(--surface-muted);
+      min-height: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preview__image {
+      max-width: 100%;
+      max-height: 60vh;
+      border-radius: 12px;
+      box-shadow:
+        0 14px 40px rgba(15, 35, 75, 0.35),
+        0 2px 6px rgba(11, 24, 54, 0.2);
+    }
+
+    .placeholder {
+      text-align: center;
+      color: #7080a9;
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .image-name {
+      margin-top: 16px;
+      font-weight: 600;
+      color: var(--accent-strong);
+      text-align: center;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 16px;
+      }
+
+      main.widget {
+        padding: 20px;
+      }
+
+      .tab-button {
+        flex: 1 1 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="widget">
+    <header>
+      <h1>Image Expander - JF Brain</h1>
+      <p>Carregue ate 5 imagens para pre-visualizar individualmente clicando em "Imagem 1", "Imagem 2", etc.</p>
+    </header>
+
+    <section class="upload">
+      <label for="imageInput">Selecione seus arquivos</label>
+      <input type="file" id="imageInput" accept="image/*" multiple />
+      <p class="hint">Formatos aceitos: JPG, PNG, GIF, WebP - Limite de 5 imagens por envio.</p>
+      <p id="feedback" class="feedback info" aria-live="polite">Escolha suas imagens para comecar.</p>
+    </section>
+
+    <div id="imageButtons" class="tab-bar hidden" role="tablist" aria-label="Imagens carregadas"></div>
+
+    <section class="preview" aria-live="polite">
+      <p id="placeholder" class="placeholder">
+        Faca upload das imagens e use os botoes "Imagem 1", "Imagem 2"... para alternar a visualizacao.
+      </p>
+      <img id="previewImage" class="preview__image hidden" alt="Pre-visualizacao da imagem selecionada" />
+      <p id="imageName" class="image-name hidden"></p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const MAX_FILES = 5;
+      const imageInput = document.getElementById('imageInput');
+      const feedback = document.getElementById('feedback');
+      const buttonBar = document.getElementById('imageButtons');
+      const previewImage = document.getElementById('previewImage');
+      const placeholder = document.getElementById('placeholder');
+      const imageName = document.getElementById('imageName');
+
+      const state = {
+        images: [],
+        activeIndex: null,
+      };
+
+      const setFeedback = (message = '', type = 'info') => {
+        feedback.textContent = message;
+        feedback.className = `feedback ${type}`.trim();
+      };
+
+      const resetView = () => {
+        state.images = [];
+        state.activeIndex = null;
+        buttonBar.innerHTML = '';
+        buttonBar.classList.add('hidden');
+        previewImage.src = '';
+        previewImage.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        imageName.textContent = '';
+        imageName.classList.add('hidden');
+      };
+
+      const renderPreview = () => {
+        if (state.activeIndex === null || !state.images[state.activeIndex]) {
+          previewImage.classList.add('hidden');
+          previewImage.src = '';
+          placeholder.classList.remove('hidden');
+          imageName.classList.add('hidden');
+          imageName.textContent = '';
+          return;
+        }
+
+        const { url, name } = state.images[state.activeIndex];
+        previewImage.src = url;
+        previewImage.alt = name;
+        previewImage.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        imageName.textContent = name;
+        imageName.classList.remove('hidden');
+      };
+
+      const buildButtons = () => {
+        buttonBar.innerHTML = '';
+
+        if (!state.images.length) {
+          buttonBar.classList.add('hidden');
+          return;
+        }
+
+        buttonBar.classList.remove('hidden');
+
+        state.images.forEach((image, index) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'tab-button';
+          button.textContent = `Imagem ${index + 1}`;
+          button.setAttribute('role', 'tab');
+          button.setAttribute('aria-selected', index === state.activeIndex ? 'true' : 'false');
+
+          if (index === state.activeIndex) {
+            button.classList.add('active');
+          }
+
+          button.addEventListener('click', () => {
+            if (state.activeIndex === index) return;
+            state.activeIndex = index;
+            buildButtons();
+            renderPreview();
+          });
+
+          buttonBar.appendChild(button);
+        });
+      };
+
+      const readAsDataUrl = (file) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve({ name: file.name, url: reader.result });
+          reader.onerror = () => reject(new Error(`Erro ao processar ${file.name}`));
+          reader.readAsDataURL(file);
+        });
+
+      const handleSelection = async (fileList) => {
+        if (!fileList.length) {
+          resetView();
+          setFeedback('Nenhum arquivo selecionado.', 'info');
+          return;
+        }
+
+        const validImages = [];
+        let invalidCount = 0;
+
+        fileList.forEach((file) => {
+          if (file.type.startsWith('image/')) {
+            validImages.push(file);
+          } else {
+            invalidCount += 1;
+          }
+        });
+
+        if (!validImages.length) {
+          resetView();
+          imageInput.value = '';
+          setFeedback('Selecione apenas arquivos de imagem (JPG, PNG, GIF, WebP).', 'error');
+          return;
+        }
+
+        let trimmed = false;
+        if (validImages.length > MAX_FILES) {
+          trimmed = true;
+        }
+
+        const filesToProcess = validImages.slice(0, MAX_FILES);
+
+        try {
+          placeholder.textContent = 'Carregando imagens...';
+          placeholder.classList.remove('hidden');
+          previewImage.classList.add('hidden');
+          imageName.classList.add('hidden');
+
+          const previews = await Promise.all(filesToProcess.map(readAsDataUrl));
+          state.images = previews;
+          state.activeIndex = 0;
+          buildButtons();
+          renderPreview();
+
+          let message = '';
+          let statusType = 'success';
+
+          if (invalidCount) {
+            message += `${invalidCount} arquivo(s) ignorado(s) por nao serem imagens. `;
+            statusType = 'warning';
+          }
+
+          if (trimmed) {
+            message += 'Limite de 5 imagens aplicado. ';
+            statusType = 'warning';
+          }
+
+          message += `${previews.length} ${previews.length === 1 ? 'imagem pronta' : 'imagens prontas'} para visualizacao.`;
+
+          setFeedback(message.trim(), statusType);
+        } catch (error) {
+          console.error(error);
+          resetView();
+          setFeedback('Nao foi possivel processar os arquivos selecionados. Tente novamente.', 'error');
+        }
+      };
+
+      imageInput.addEventListener('change', (event) => {
+        const files = Array.from(event.target.files || []);
+        handleSelection(files);
+      });
+    })();
+  </script>
+</body>
+</html>
