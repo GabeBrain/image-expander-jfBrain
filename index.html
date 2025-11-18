@@ -2,142 +2,95 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Expander - JF Brain</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Simple Image Viewer - JF Brain</title>
   <style>
     :root {
       color-scheme: dark;
       --bg: #030712;
-      --canvas: #050a18;
-      --placeholder: rgba(255, 255, 255, 0.65);
+      --text: #ffffff;
+      --btn-bg: rgba(255, 255, 255, 0.1);
+      --btn-hover: rgba(255, 255, 255, 0.2);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      min-height: 100vh;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at top, #03050c, #050a18, #010208);
-      color: #fff;
+      height: 100vh;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      overflow: hidden; /* Previne scroll na pagina base */
     }
 
-    .viewer {
-      width: 100%;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: clamp(8px, 4vw, 40px);
-    }
-
-    .carousel {
-      width: min(1200px, 100%);
-    }
-
-    .carousel__viewport {
-      width: 100%;
-      border-radius: clamp(16px, 3vw, 32px);
-      overflow: hidden;
-      background: linear-gradient(135deg, rgba(8, 13, 25, 0.95), rgba(9, 17, 39, 0.75));
-      box-shadow: 0 20px 80px rgba(0, 0, 0, 0.55);
-      min-height: clamp(280px, 65vh, 720px);
-      touch-action: pan-y;
+    /* --- Visualização Principal (Single View) --- */
+    .main-viewer {
       position: relative;
-    }
-
-    body.orientation-landscape .carousel__viewport {
-      min-height: clamp(320px, 90vh, 900px);
-    }
-
-    .carousel__track {
-      display: flex;
       width: 100%;
       height: 100%;
-      transition: transform 0.35s ease;
-      will-change: transform;
-    }
-
-    .carousel__slide {
-      flex: 0 0 100%;
-      min-width: 100%;
-      height: 100%;
+      padding: 20px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 0;
     }
 
-    .carousel__slide img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      border-radius: clamp(12px, 2vw, 24px);
-      box-shadow:
-        0 25px 60px rgba(5, 12, 28, 0.8),
-        0 2px 6px rgba(0, 0, 0, 0.5);
+    .image-container {
+      position: relative;
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
       cursor: zoom-in;
       transition: transform 0.2s ease;
-      background: #000;
     }
 
-    .carousel__slide img:active {
-      transform: scale(0.99);
+    .image-container:active {
+      transform: scale(0.98);
     }
 
-    .carousel__placeholder {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      color: var(--placeholder);
-      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-      letter-spacing: 0.02em;
-      padding: 24px;
-      background: rgba(0, 0, 0, 0.2);
+    .image-container img {
+      display: block;
+      max-width: 100%;
+      max-height: 80vh;
+      object-fit: contain;
+      width: auto;
+      height: auto;
     }
 
-    .hidden {
-      display: none !important;
+    .counter {
+      margin-top: 16px;
+      font-size: 0.9rem;
+      opacity: 0.7;
+      background: rgba(0,0,0,0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
     }
 
+    .hidden { display: none !important; }
+
+    /* --- Lightbox (Expandido) --- */
     .lightbox {
       position: fixed;
       inset: 0;
       background: #000;
+      z-index: 999;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 999;
-      touch-action: none;
       opacity: 1;
+      transition: opacity 0.2s ease;
     }
 
     .lightbox.hidden {
       opacity: 0;
       pointer-events: none;
-    }
-
-    .lightbox__close {
-      position: fixed;
-      top: clamp(12px, 3vw, 32px);
-      right: clamp(12px, 3vw, 32px);
-      width: clamp(40px, 5vw, 56px);
-      height: clamp(40px, 5vw, 56px);
-      border-radius: 999px;
-      border: none;
-      background: rgba(0, 0, 0, 0.45);
-      color: #fff;
-      font-size: clamp(1.5rem, 4vw, 2.5rem);
-      cursor: pointer;
-      z-index: 1000;
     }
 
     .lightbox__canvas {
@@ -146,66 +99,113 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
     }
 
     .lightbox__canvas img {
-      width: 100%;
-      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
       object-fit: contain;
       transform-origin: center;
-      cursor: grab;
-      touch-action: none;
+      touch-action: none; /* Essencial para gestos customizados */
+      user-select: none;
+      -webkit-user-drag: none;
     }
 
-    .lightbox__canvas img:active {
-      cursor: grabbing;
+    /* --- Controles do Lightbox --- */
+    .control-btn {
+      position: absolute;
+      background: rgba(30, 30, 30, 0.6);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+      transition: background 0.2s;
+    }
+
+    .control-btn:hover { background: rgba(80, 80, 80, 0.8); }
+    .control-btn:disabled { opacity: 0.2; cursor: default; pointer-events: none; }
+
+    .btn-close { top: 20px; right: 20px; font-size: 32px; background: transparent; }
+    .btn-prev { left: 20px; top: 50%; transform: translateY(-50%); }
+    .btn-next { right: 20px; top: 50%; transform: translateY(-50%); }
+
+    /* Ajuste para Mobile */
+    @media (max-width: 768px) {
+      .btn-prev, .btn-next {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+        background: rgba(0, 0, 0, 0.4);
+      }
+      .btn-prev { left: 10px; }
+      .btn-next { right: 10px; }
+    }
+
+    .placeholder-msg {
+      text-align: center;
+      color: rgba(255,255,255,0.5);
+      padding: 20px;
     }
   </style>
 </head>
 <body>
-  <div class="viewer">
-    <div class="carousel">
-      <div id="carouselViewport" class="carousel__viewport" aria-live="polite">
-        <div id="carouselTrack" class="carousel__track" role="list"></div>
-        <div id="placeholder" class="carousel__placeholder">
-          Nenhuma imagem configurada neste widget.
-        </div>
-      </div>
+
+  <div class="main-viewer">
+    <div id="mainImageWrapper" class="image-container hidden">
+      <img id="mainImage" alt="Imagem Principal" />
+    </div>
+    <div id="counter" class="counter hidden">0 / 0</div>
+    <div id="placeholder" class="placeholder-msg">
+      Nenhuma imagem carregada.
     </div>
   </div>
 
   <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true">
-    <button id="closeLightbox" class="lightbox__close" aria-label="Fechar">&times;</button>
+    <button id="closeLightbox" class="control-btn btn-close">&times;</button>
+    
+    <button id="prevBtn" class="control-btn btn-prev">&#10094;</button>
+    
     <div id="lightboxCanvas" class="lightbox__canvas">
-      <img id="lightboxImage" alt="Imagem ampliada" draggable="false" />
+      <img id="lightboxImage" alt="Imagem Zoom" draggable="false" />
     </div>
+    
+    <button id="nextBtn" class="control-btn btn-next">&#10095;</button>
   </div>
 
   <script>
     (() => {
-      const MAX_FILES = 15;
-      const SWIPE_THRESHOLD = 45;
+      // --- Constantes ---
       const MAX_ZOOM = 5;
       const ZOOM_STEP = 0.25;
+      const MIN_ZOOM = 1;
 
-      const track = document.getElementById('carouselTrack');
-      const viewport = document.getElementById('carouselViewport');
-      const placeholder = document.getElementById('placeholder');
-      const lightbox = document.getElementById('lightbox');
-      const lightboxImage = document.getElementById('lightboxImage');
-      const lightboxCanvas = document.getElementById('lightboxCanvas');
-      const closeLightboxBtn = document.getElementById('closeLightbox');
-
-      const state = {
-        images: [],
-        activeIndex: null,
+      // --- Elementos DOM ---
+      const els = {
+        mainWrapper: document.getElementById('mainImageWrapper'),
+        mainImage: document.getElementById('mainImage'),
+        counter: document.getElementById('counter'),
+        placeholder: document.getElementById('placeholder'),
+        lightbox: document.getElementById('lightbox'),
+        lightboxImage: document.getElementById('lightboxImage'),
+        lightboxCanvas: document.getElementById('lightboxCanvas'),
+        closeBtn: document.getElementById('closeLightbox'),
+        prevBtn: document.getElementById('prevBtn'),
+        nextBtn: document.getElementById('nextBtn'),
       };
 
-      const pointerState = {
-        active: false,
-        startX: 0,
-        deltaX: 0,
-        pointerId: null,
+      // --- Estado Global ---
+      const state = {
+        images: [],
+        activeIndex: 0,
       };
 
       const zoomState = {
@@ -218,61 +218,99 @@
         lastY: 0,
       };
 
-      const lightboxPointers = new Map();
       const pinchState = {
         active: false,
         startDistance: 0,
         startScale: 1,
       };
 
+      const lightboxPointers = new Map();
       let jotformBridgeReady = false;
 
+      // --- Funções Auxiliares de Dados (Mantidas para compatibilidade) ---
       const serializeImages = () => JSON.stringify(state.images);
-
-      const sendCurrentValue = (context = 'sync') => {
-        if (window.JFCustomWidget?.sendData) {
-          window.JFCustomWidget.sendData({ value: serializeImages(), context });
+      
+      const normalizeArrayValue = (raw) => {
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw;
+        if (typeof raw === 'string') {
+            try { return JSON.parse(raw); } catch { return raw.includes(',') ? raw.split(',') : [raw]; }
         }
+        return [raw];
       };
 
-      const updateTrackPosition = () => {
+      const extractUrl = (item) => {
+        if (!item) return '';
+        return typeof item === 'string' ? item : (item.url || item.value || item.path || '');
+      };
+
+      // --- Renderização ---
+      const updateView = () => {
         if (!state.images.length) {
-          track.style.transform = 'translate3d(0, 0, 0)';
+          els.mainWrapper.classList.add('hidden');
+          els.counter.classList.add('hidden');
+          els.placeholder.classList.remove('hidden');
           return;
         }
 
-        const offsetPercent = (state.activeIndex ?? 0) * -100;
-        track.style.transform = `translate3d(${offsetPercent}%, 0, 0)`;
+        const currentImg = state.images[state.activeIndex];
+        
+        // Atualiza Main View
+        els.mainImage.src = currentImg.url;
+        els.mainWrapper.classList.remove('hidden');
+        els.placeholder.classList.add('hidden');
+        
+        // Atualiza Contador
+        els.counter.textContent = `${state.activeIndex + 1} / ${state.images.length}`;
+        els.counter.classList.remove('hidden');
+
+        // Atualiza botões de navegação
+        updateNavButtons();
       };
 
-      const goToSlide = (index) => {
+      const updateNavButtons = () => {
+        els.prevBtn.disabled = state.activeIndex === 0;
+        els.nextBtn.disabled = state.activeIndex === state.images.length - 1;
+        
+        // Oculta botões se não houver navegação possível naquela direção
+        els.prevBtn.style.opacity = state.activeIndex === 0 ? '0' : '1';
+        els.nextBtn.style.opacity = state.activeIndex === state.images.length - 1 ? '0' : '1';
+      };
+
+      // --- Lightbox Logica ---
+      const openLightbox = () => {
         if (!state.images.length) return;
-        const nextIndex = Math.max(0, Math.min(index, state.images.length - 1));
-        if (nextIndex === state.activeIndex) return;
-        state.activeIndex = nextIndex;
-        updateTrackPosition();
-      };
-
-      const openLightbox = (index) => {
-        if (!state.images[index]) return;
-        state.activeIndex = index;
-        updateTrackPosition();
-
-        lightboxImage.src = state.images[index].url;
-        lightboxImage.alt = state.images[index].name || `Imagem ${index + 1}`;
-        lightbox.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        const img = state.images[state.activeIndex];
+        els.lightboxImage.src = img.url;
+        els.lightbox.classList.remove('hidden');
         resetZoom(true);
+        updateNavButtons();
       };
 
       const closeLightbox = () => {
-        lightbox.classList.add('hidden');
-        document.body.style.overflow = '';
+        els.lightbox.classList.add('hidden');
         resetZoom();
       };
 
+      const navigate = (direction) => {
+        const newIndex = state.activeIndex + direction;
+        if (newIndex >= 0 && newIndex < state.images.length) {
+          state.activeIndex = newIndex;
+          
+          // Efeito simples de transição no lightbox
+          els.lightboxImage.style.opacity = '0.5';
+          setTimeout(() => {
+            els.lightboxImage.src = state.images[state.activeIndex].url;
+            els.lightboxImage.style.opacity = '1';
+            resetZoom(true);
+            updateView(); // Sincroniza o fundo
+          }, 150);
+        }
+      };
+
+      // --- Zoom & Pan Engine (Matemática) ---
       const applyZoom = () => {
-        lightboxImage.style.transform =
+        els.lightboxImage.style.transform = 
           `translate(${zoomState.translateX}px, ${zoomState.translateY}px) scale(${zoomState.scale})`;
       };
 
@@ -282,458 +320,155 @@
         zoomState.translateY = 0;
         zoomState.panning = false;
         zoomState.pointerId = null;
-        if (!initial) {
-          lightboxPointers.clear();
-          pinchState.active = false;
-        }
+        if (!initial) lightboxPointers.clear();
         applyZoom();
-      };
-
-      const updateZoom = (step) => {
-        const nextScale = Math.min(MAX_ZOOM, Math.max(1, zoomState.scale + step));
-        if (nextScale === 1) {
-          zoomState.translateX = 0;
-          zoomState.translateY = 0;
-        }
-        zoomState.scale = nextScale;
-        applyZoom();
-      };
-
-      const renderSlides = () => {
-        track.innerHTML = '';
-
-        if (!state.images.length) {
-          placeholder.classList.remove('hidden');
-          state.activeIndex = null;
-          updateTrackPosition();
-          return;
-        }
-
-        placeholder.classList.add('hidden');
-
-        state.images.forEach(({ url, name }, index) => {
-          const slide = document.createElement('figure');
-          slide.className = 'carousel__slide';
-          slide.setAttribute('role', 'group');
-          slide.setAttribute('aria-roledescription', 'slide');
-          slide.setAttribute('aria-label', `Imagem ${index + 1}`);
-
-          const img = document.createElement('img');
-          img.src = url;
-          img.alt = name || `Imagem ${index + 1}`;
-          img.draggable = false;
-
-          img.addEventListener('click', () => openLightbox(index));
-
-          slide.appendChild(img);
-          track.appendChild(slide);
-        });
-
-        if (state.activeIndex === null) {
-          state.activeIndex = 0;
-        } else if (state.activeIndex > state.images.length - 1) {
-          state.activeIndex = state.images.length - 1;
-        }
-
-        updateTrackPosition();
-      };
-
-      const resetView = () => {
-        state.images = [];
-        state.activeIndex = null;
-        track.innerHTML = '';
-        placeholder.classList.remove('hidden');
-        updateTrackPosition();
-      };
-
-      const parseImageList = (raw) => {
-        if (!raw) return [];
-        try {
-          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (Array.isArray(parsed)) {
-            return parsed
-              .map((item, index) => {
-                if (!item) return null;
-                const url = item.url || item.value || item.path;
-                if (!url) return null;
-                const name = item.name || item.label || `Imagem ${index + 1}`;
-                return { name, url };
-              })
-              .filter(Boolean);
-          }
-        } catch (error) {
-          console.warn('Nao foi possivel interpretar a lista de imagens:', error);
-        }
-        return [];
-      };
-
-      const normalizeArrayValue = (raw) => {
-        if (!raw) return [];
-        if (Array.isArray(raw)) return raw;
-        if (typeof raw === 'object' && Array.isArray(raw.files)) return raw.files;
-        if (typeof raw === 'object' && Array.isArray(raw.list)) return raw.list;
-        if (typeof raw === 'string') {
-          const trimmed = raw.trim();
-          if (!trimmed) return [];
-          try {
-            const parsed = JSON.parse(trimmed);
-            if (Array.isArray(parsed)) return parsed;
-          } catch (_) {}
-          if (trimmed.includes('\n')) {
-            return trimmed.split('\n').map((line) => line.trim()).filter(Boolean);
-          }
-          if (trimmed.includes(',')) {
-            return trimmed.split(',').map((line) => line.trim()).filter(Boolean);
-          }
-          return [trimmed];
-        }
-        return [raw];
-      };
-
-      const extractLabels = (settings, primaryKey) => {
-        if (!settings) return [];
-        const preferredKeys = [
-          'imagelabels',
-          'labels',
-          'names',
-          'nomes',
-          'titulos',
-        ];
-        if (primaryKey) {
-          preferredKeys.push(`${primaryKey.toLowerCase()}labels`);
-          preferredKeys.push(`${primaryKey.toLowerCase()}names`);
-        }
-
-        for (const key of Object.keys(settings)) {
-          const normalizedKey = key.toLowerCase();
-          if (preferredKeys.some((hint) => normalizedKey.includes(hint))) {
-            const arr = normalizeArrayValue(settings[key]);
-            if (arr.length) {
-              return arr.map((value) => (typeof value === 'string' ? value.trim() : '')).filter(Boolean);
-            }
-          }
-        }
-        return [];
-      };
-
-      const fileUrlFromItem = (item) => {
-        if (!item) return '';
-        if (typeof item === 'string') return item;
-        return (
-          item.url ||
-          item.value ||
-          item.fileUrl ||
-          item.fileurl ||
-          item.file_path ||
-          item.filePath ||
-          item.path ||
-          item.link ||
-          ''
-        );
-      };
-
-      const fileNameFromItem = (item, fallback = '') => {
-        if (!item) return fallback;
-        if (typeof item === 'string') {
-          const parts = item.split('/');
-          return parts[parts.length - 1] || fallback;
-        }
-        return (
-          item.name ||
-          item.originalName ||
-          item.label ||
-          item.filename ||
-          item.title ||
-          fallback
-        );
-      };
-
-      const parseUploadsSetting = (rawUploads, labels = []) => {
-        const uploads = normalizeArrayValue(rawUploads);
-        if (!uploads.length) return [];
-
-        return uploads
-          .map((entry, index) => {
-            const url = fileUrlFromItem(entry);
-            if (!url) return null;
-            const label = labels[index] || '';
-            const fallbackName = fileNameFromItem(entry, `Imagem ${index + 1}`);
-            return {
-              name: label || fallbackName,
-              url,
-            };
-          })
-          .filter(Boolean);
-      };
-
-      const detectUploadsInSettings = (settings = {}) => {
-        const hints = ['upload', 'file', 'imagem', 'image', 'galeria', 'gallery', 'arquivo'];
-
-        for (const [key, value] of Object.entries(settings)) {
-          if (value == null) continue;
-          const normalizedKey = key.toLowerCase();
-          const looksLikeUpload = hints.some((hint) => normalizedKey.includes(hint));
-          const arr = normalizeArrayValue(value);
-          const hasFileShape = arr.some((item) => {
-            if (!item) return false;
-            if (typeof item === 'string') {
-              return item.startsWith('http') || item.includes('/');
-            }
-            return Boolean(fileUrlFromItem(item));
-          });
-          if (!arr.length || (!looksLikeUpload && !hasFileShape)) continue;
-
-          const labels = extractLabels(settings, key);
-          const parsed = parseUploadsSetting(arr, labels);
-          if (parsed.length) {
-            return { images: parsed, source: key };
-          }
-        }
-
-        return null;
-      };
-
-      const applyImageSources = (value, settings = {}) => {
-        const sources = [
-          { images: parseImageList(value), source: 'valor salvo' },
-          { images: parseImageList(settings.imageManifest), source: 'imageManifest' },
-        ].filter((entry) => entry.images.length);
-
-        if (!sources.length) {
-          const uploads = detectUploadsInSettings(settings);
-          if (uploads?.images.length) {
-            sources.push({ images: uploads.images, source: uploads.source });
-          }
-        }
-
-        const firstSource = sources.find((entry) => entry.images.length);
-
-        if (!firstSource) {
-          resetView();
-          console.warn('Nenhuma imagem configurada nas configuracoes do widget.');
-          return;
-        }
-
-        state.images = firstSource.images.slice(0, MAX_FILES);
-        state.activeIndex = 0;
-        renderSlides();
-      };
-
-      const startPointer = (event) => {
-        if (!state.images.length) return;
-        pointerState.active = true;
-        pointerState.startX = event.clientX;
-        pointerState.deltaX = 0;
-        pointerState.pointerId = event.pointerId;
-        viewport.setPointerCapture?.(event.pointerId);
-      };
-
-      const movePointer = (event) => {
-        if (!pointerState.active || pointerState.pointerId !== event.pointerId) return;
-        pointerState.deltaX = event.clientX - pointerState.startX;
-      };
-
-      const endPointer = () => {
-        if (!pointerState.active) return;
-        if (Math.abs(pointerState.deltaX) > SWIPE_THRESHOLD) {
-          if (pointerState.deltaX < 0) {
-            goToSlide((state.activeIndex ?? 0) + 1);
-          } else {
-            goToSlide((state.activeIndex ?? 0) - 1);
-          }
-        }
-
-        if (pointerState.pointerId !== null) {
-          viewport.releasePointerCapture?.(pointerState.pointerId);
-        }
-
-        pointerState.active = false;
-        pointerState.startX = 0;
-        pointerState.deltaX = 0;
-        pointerState.pointerId = null;
-      };
-
-      const cancelPointer = () => {
-        pointerState.active = false;
-        pointerState.startX = 0;
-        pointerState.deltaX = 0;
-        pointerState.pointerId = null;
       };
 
       const distanceBetweenPointers = () => {
         if (lightboxPointers.size < 2) return 0;
-        const points = Array.from(lightboxPointers.values());
-        const [p1, p2] = points;
+        const [p1, p2] = Array.from(lightboxPointers.values());
         return Math.hypot(p1.x - p2.x, p1.y - p2.y);
       };
 
-      const handleLightboxPointerDown = (event) => {
-        lightboxPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
+      // Eventos de Pointer (Mouse/Touch)
+      const handlePointerDown = (e) => {
+        lightboxPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        
         if (lightboxPointers.size === 2) {
           pinchState.active = true;
           pinchState.startDistance = distanceBetweenPointers();
           pinchState.startScale = zoomState.scale;
         } else if (lightboxPointers.size === 1 && zoomState.scale > 1) {
           zoomState.panning = true;
-          zoomState.pointerId = event.pointerId;
-          zoomState.lastX = event.clientX;
-          zoomState.lastY = event.clientY;
+          zoomState.pointerId = e.pointerId;
+          zoomState.lastX = e.clientX;
+          zoomState.lastY = e.clientY;
         }
-
-        lightboxCanvas.setPointerCapture?.(event.pointerId);
+        els.lightboxCanvas.setPointerCapture?.(e.pointerId);
       };
 
-      const handleLightboxPointerMove = (event) => {
-        if (!lightboxPointers.has(event.pointerId)) return;
-        lightboxPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      const handlePointerMove = (e) => {
+        if (!lightboxPointers.has(e.pointerId)) return;
+        lightboxPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-        if (pinchState.active && lightboxPointers.size >= 2) {
-          const distance = distanceBetweenPointers();
-          if (distance && pinchState.startDistance) {
-            const ratio = distance / pinchState.startDistance;
-            const nextScale = Math.min(MAX_ZOOM, Math.max(1, pinchState.startScale * ratio));
-            zoomState.scale = nextScale;
+        // Lógica Pinça (Zoom)
+        if (pinchState.active && lightboxPointers.size === 2) {
+          const dist = distanceBetweenPointers();
+          if (dist && pinchState.startDistance) {
+            const ratio = dist / pinchState.startDistance;
+            zoomState.scale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchState.startScale * ratio));
             applyZoom();
           }
           return;
         }
 
-        if (zoomState.panning && zoomState.pointerId === event.pointerId) {
-          const dx = event.clientX - zoomState.lastX;
-          const dy = event.clientY - zoomState.lastY;
-          zoomState.lastX = event.clientX;
-          zoomState.lastY = event.clientY;
+        // Lógica Pan (Arrastar)
+        if (zoomState.panning && zoomState.pointerId === e.pointerId) {
+          const dx = e.clientX - zoomState.lastX;
+          const dy = e.clientY - zoomState.lastY;
           zoomState.translateX += dx;
           zoomState.translateY += dy;
+          zoomState.lastX = e.clientX;
+          zoomState.lastY = e.clientY;
           applyZoom();
         }
       };
 
-      const handleLightboxPointerEnd = (event) => {
-        lightboxPointers.delete(event.pointerId);
-
-        if (pinchState.active && lightboxPointers.size < 2) {
-          pinchState.active = false;
-          pinchState.startDistance = 0;
-        }
-
-        if (zoomState.panning && zoomState.pointerId === event.pointerId) {
-          zoomState.panning = false;
-          zoomState.pointerId = null;
-        }
-
-        lightboxCanvas.releasePointerCapture?.(event.pointerId);
+      const handlePointerUp = (e) => {
+        lightboxPointers.delete(e.pointerId);
+        if (lightboxPointers.size < 2) pinchState.active = false;
+        if (zoomState.pointerId === e.pointerId) zoomState.panning = false;
       };
 
-      const handleWheelZoom = (event) => {
-        event.preventDefault();
-        const direction = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-        updateZoom(direction);
+      const handleWheel = (e) => {
+        e.preventDefault();
+        const direction = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+        const nextScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomState.scale + direction));
+        zoomState.scale = nextScale;
+        if (nextScale === 1) { zoomState.translateX = 0; zoomState.translateY = 0; }
+        applyZoom();
       };
 
-      const setupJotformBridge = () => {
-        if (jotformBridgeReady || !window.JFCustomWidget) return;
-        jotformBridgeReady = true;
+      // --- Setup Inicial ---
+      const loadImages = (sourceData) => {
+        const raw = normalizeArrayValue(sourceData);
+        state.images = raw.map((item, idx) => ({
+          url: extractUrl(item),
+          name: item.name || `Imagem ${idx+1}`
+        })).filter(i => i.url);
+        
+        state.activeIndex = 0;
+        updateView();
+      };
 
-        JFCustomWidget.subscribe('ready', ({ value } = {}) => {
-          const settings = window.JFCustomWidget.getWidgetSettings?.() || {};
-          applyImageSources(value, settings);
-          sendCurrentValue('ready');
+      const setupEvents = () => {
+        // Abertura
+        els.mainWrapper.addEventListener('click', openLightbox);
+        
+        // Fechamento
+        els.closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeLightbox(); });
+        // Clicar fora da imagem fecha (opcional, mas comum)
+        els.lightbox.addEventListener('click', (e) => {
+            if(e.target === els.lightbox || e.target === els.lightboxCanvas) closeLightbox();
         });
 
-        JFCustomWidget.subscribe('submit', () => {
-          JFCustomWidget.sendSubmit({
-            valid: true,
-            value: serializeImages(),
-          });
-        });
-      };
+        // Navegação
+        els.prevBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate(-1); });
+        els.nextBtn.addEventListener('click', (e) => { e.stopPropagation(); navigate(1); });
 
-      const handleOrientationClass = () => {
-        const mq = window.matchMedia('(orientation: landscape)');
-        const apply = () => {
-          const isLandscape = mq.matches || window.innerWidth > window.innerHeight;
-          document.body.classList.toggle('orientation-landscape', isLandscape);
-        };
-        apply();
-        if (mq.addEventListener) {
-          mq.addEventListener('change', () => {
-            apply();
-            updateTrackPosition();
-          });
-        } else if (mq.addListener) {
-          mq.addListener(() => {
-            apply();
-            updateTrackPosition();
-          });
-        }
-        window.addEventListener('resize', () => {
-          apply();
-          updateTrackPosition();
+        // Zoom & Pan
+        els.lightboxCanvas.addEventListener('pointerdown', handlePointerDown);
+        els.lightboxCanvas.addEventListener('pointermove', handlePointerMove);
+        els.lightboxCanvas.addEventListener('pointerup', handlePointerUp);
+        els.lightboxCanvas.addEventListener('pointercancel', handlePointerUp);
+        els.lightboxCanvas.addEventListener('wheel', handleWheel, { passive: false });
+
+        // Teclado
+        document.addEventListener('keydown', (e) => {
+          if (els.lightbox.classList.contains('hidden')) return;
+          if (e.key === 'Escape') closeLightbox();
+          if (e.key === 'ArrowLeft') navigate(-1);
+          if (e.key === 'ArrowRight') navigate(1);
         });
       };
 
-      const bootstrap = () => {
-        handleOrientationClass();
+      const initJotform = () => {
+        if (window.JFCustomWidget) {
+            JFCustomWidget.subscribe('ready', (data) => {
+                // Tenta pegar imagens dos settings ou do value salvo
+                const settings = JFCustomWidget.getWidgetSettings();
+                // Prioridade: Value Salvo > Settings > Demo
+                let src = data.value;
+                if (!src && settings.images) src = settings.images; 
+                
+                // Logica de "adivinhar" uploads (simplificada da anterior)
+                if(!src) {
+                   // Fallback básico para procurar chaves comuns
+                   const keys = Object.keys(settings);
+                   const imgKey = keys.find(k => k.toLowerCase().includes('upload') || k.toLowerCase().includes('imag'));
+                   if(imgKey) src = settings[imgKey];
+                }
 
-        if (!window.JFCustomWidget) {
-          if (Array.isArray(window.demoImages) && window.demoImages.length) {
-            state.images = window.demoImages.slice(0, MAX_FILES);
-            state.activeIndex = 0;
-            renderSlides();
-          } else {
-            resetView();
-          }
+                loadImages(src);
+            });
+            
+            JFCustomWidget.subscribe('submit', () => {
+                JFCustomWidget.sendSubmit({ valid: true, value: serializeImages() });
+            });
         }
-        setupJotformBridge();
       };
 
-      viewport.addEventListener('pointerdown', startPointer);
-      viewport.addEventListener('pointermove', movePointer);
-      viewport.addEventListener('pointerup', endPointer);
-      viewport.addEventListener('pointercancel', cancelPointer);
-      viewport.addEventListener('pointerleave', cancelPointer);
+      // Boot
+      setupEvents();
+      initJotform();
 
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowLeft') {
-          goToSlide((state.activeIndex ?? 0) - 1);
-        } else if (event.key === 'ArrowRight') {
-          goToSlide((state.activeIndex ?? 0) + 1);
-        } else if (event.key === 'Escape' && !lightbox.classList.contains('hidden')) {
-          closeLightbox();
-        }
-      });
-
-      lightboxCanvas.addEventListener('pointerdown', handleLightboxPointerDown);
-      lightboxCanvas.addEventListener('pointermove', handleLightboxPointerMove);
-      lightboxCanvas.addEventListener('pointerup', handleLightboxPointerEnd);
-      lightboxCanvas.addEventListener('pointerleave', handleLightboxPointerEnd);
-      lightboxCanvas.addEventListener('pointercancel', handleLightboxPointerEnd);
-      lightboxCanvas.addEventListener('wheel', handleWheelZoom, { passive: false });
-
-      closeLightboxBtn.addEventListener('click', closeLightbox);
-      lightbox.addEventListener('click', (event) => {
-        if (event.target === lightbox) {
-          closeLightbox();
-        }
-      });
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', bootstrap);
-      } else {
-        bootstrap();
+      // Demo fallback se rodar fora do Jotform
+      if (!window.JFCustomWidget) {
+         // window.demoImages = [{url: '...'}]; // Para testes locais
       }
 
-      window.onJotformWidgetReady = () => {
-        setupJotformBridge();
-      };
-
-      if (window.JFCustomWidget) {
-        setupJotformBridge();
-      }
     })();
   </script>
-  <script src="https://js.jotform.com/JotFormCustomWidget.min.js?onload=onJotformWidgetReady"></script>
+  <script src="https://js.jotform.com/JFCustomWidget.min.js"></script>
 </body>
 </html>
