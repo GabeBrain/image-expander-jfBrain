@@ -3,119 +3,193 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Image Viewer - JF Brain</title>
+  <title>Fullscreen Image Viewer - JF Brain</title>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #030712;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --primary: #84cc16;
       --text: #ffffff;
-      --muted: rgba(255, 255, 255, 0.65);
-      --btn-bg: rgba(255, 255, 255, 0.1);
-      --btn-hover: rgba(255, 255, 255, 0.2);
+      --text-muted: #94a3b8;
     }
 
     * {
       box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
       margin: 0;
       height: 100vh;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at top, #03050c, #050a18, #010208);
+      background: var(--bg);
       color: var(--text);
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
       overflow: hidden;
     }
 
-    .viewer {
+    .viewer-container {
       width: 100%;
       height: 100%;
-      padding: clamp(12px, 5vw, 40px);
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: clamp(12px, 4vw, 32px);
     }
 
-    .main-viewer {
-      width: min(1200px, 100%);
+    .card {
+      position: relative;
+      width: 100%;
+      max-width: 880px;
+      max-height: 640px;
       height: 100%;
-      border-radius: clamp(16px, 3vw, 32px);
-      background: linear-gradient(135deg, rgba(8, 13, 25, 0.95), rgba(9, 17, 39, 0.75));
-      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.55);
-      padding: clamp(16px, 4vw, 48px);
+      background: var(--surface);
+      border-radius: clamp(12px, 2vw, 20px);
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    }
+
+    .card__image-area {
+      flex: 1;
       position: relative;
       overflow: hidden;
-    }
-
-    .image-container {
-      width: 100%;
-      max-height: 70vh;
-      border-radius: clamp(12px, 2vw, 24px);
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(5, 12, 28, 0.8);
       cursor: zoom-in;
-      transition: transform 0.2s ease;
-    }
-
-    .image-container:active {
-      transform: scale(0.98);
-    }
-
-    .image-container img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
       background: #000;
     }
 
-    .counter {
-      margin-top: 18px;
+    .card__image-area img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.3s ease;
+      display: block;
+    }
+
+    .zoom-hint {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #000;
+      padding: 8px;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+    }
+
+    .zoom-hint svg {
+      width: 20px;
+      height: 20px;
+      display: block;
+    }
+
+    .nav-bar {
+      height: 60px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0;
+    }
+
+    .nav-btn {
+      flex: 1;
+      height: 100%;
+      border: none;
+      background: transparent;
+      color: #fff;
+      font-weight: 600;
       font-size: 0.9rem;
-      letter-spacing: 0.04em;
-      padding: 6px 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s ease;
+    }
+
+    .nav-btn:active {
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .counter-badge {
+      font-size: 0.85rem;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 4px 12px;
       border-radius: 999px;
-      background: rgba(0, 0, 0, 0.35);
-      color: var(--muted);
+      color: #fff;
     }
 
     .placeholder {
       text-align: center;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .hidden {
-      display: none !important;
+      color: var(--text-muted);
+      font-size: 1rem;
     }
 
     .lightbox {
       position: fixed;
       inset: 0;
       background: #000;
-      z-index: 999;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .lightbox.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    :fullscreen .lightbox,
+    :-webkit-full-screen .lightbox {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .lightbox__header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: clamp(12px, 4vw, 32px);
+      display: flex;
+      justify-content: flex-end;
+      z-index: 100;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
+    }
+
+    .close-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: #fff;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 26px;
       display: flex;
       align-items: center;
       justify-content: center;
-      opacity: 1;
-      transition: opacity 0.2s ease;
-    }
-
-    .lightbox.hidden {
-      opacity: 0;
-      pointer-events: none;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
     }
 
     .lightbox__canvas {
+      flex: 1;
       width: 100%;
-      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -130,6 +204,7 @@
       transform-origin: center;
       user-select: none;
       -webkit-user-drag: none;
+      will-change: transform;
       cursor: grab;
     }
 
@@ -137,103 +212,99 @@
       cursor: grabbing;
     }
 
-    .control-btn {
+    .float-nav {
       position: absolute;
-      background: rgba(20, 20, 20, 0.65);
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.15);
       color: #fff;
       border: none;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      width: clamp(40px, 6vw, 56px);
-      height: clamp(40px, 6vw, 56px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: clamp(1.4rem, 4vw, 2.25rem);
+      font-size: 24px;
       cursor: pointer;
-      z-index: 1000;
-      backdrop-filter: blur(4px);
-      transition: background 0.2s ease, opacity 0.2s ease;
+      z-index: 50;
+      display: none;
     }
 
-    .control-btn:hover {
-      background: rgba(60, 60, 60, 0.8);
+    @media (min-width: 768px) {
+      .float-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
     }
 
-    .control-btn:disabled {
-      opacity: 0.15;
-      pointer-events: none;
-    }
-
-    .btn-close {
-      top: clamp(12px, 4vw, 32px);
-      right: clamp(12px, 4vw, 32px);
-      background: transparent;
-      font-size: clamp(1.8rem, 5vw, 2.8rem);
-    }
-
-    .btn-prev {
+    .float-prev {
       left: clamp(12px, 4vw, 32px);
-      top: 50%;
-      transform: translateY(-50%);
     }
 
-    .btn-next {
+    .float-next {
       right: clamp(12px, 4vw, 32px);
-      top: 50%;
-      transform: translateY(-50%);
     }
 
-    @media (max-width: 768px) {
-      .main-viewer {
-        padding: 16px;
-      }
-
-      .image-container {
-        max-height: 60vh;
-      }
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
 <body>
-  <div class="viewer">
-    <div class="main-viewer">
-      <div id="imageWrapper" class="image-container hidden">
+  <div class="viewer-container">
+    <div id="mainCard" class="card hidden">
+      <div id="zoomTrigger" class="card__image-area">
         <img id="mainImage" alt="Imagem principal" draggable="false" />
+        <div class="zoom-hint" aria-hidden="true">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+          </svg>
+        </div>
       </div>
-      <div id="counter" class="counter hidden">0 / 0</div>
-      <div id="placeholder" class="placeholder">
-        Nenhuma imagem configurada neste widget.
+      <div class="nav-bar">
+        <button id="btnPrev" class="nav-btn" type="button">
+          <span>&larr;</span> Anterior
+        </button>
+        <span id="counter" class="counter-badge">0 / 0</span>
+        <button id="btnNext" class="nav-btn" type="button">
+          Proximo <span>&rarr;</span>
+        </button>
       </div>
     </div>
+    <div id="placeholder" class="placeholder">Carregando imagens...</div>
   </div>
 
-  <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true">
-    <button id="closeLightbox" type="button" class="control-btn btn-close" aria-label="Fechar">&times;</button>
-    <button id="prevImage" type="button" class="control-btn btn-prev" aria-label="Imagem anterior">&#10094;</button>
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true">
+    <div class="lightbox__header">
+      <button id="btnClose" class="close-btn" type="button" aria-label="Fechar">&times;</button>
+    </div>
+    <button id="floatPrev" class="float-nav float-prev" type="button" aria-label="Imagem anterior">&lsaquo;</button>
     <div id="lightboxCanvas" class="lightbox__canvas">
       <img id="lightboxImage" alt="Imagem ampliada" draggable="false" />
     </div>
-    <button id="nextImage" type="button" class="control-btn btn-next" aria-label="Proxima imagem">&#10095;</button>
+    <button id="floatNext" class="float-nav float-next" type="button" aria-label="Proxima imagem">&rsaquo;</button>
   </div>
 
   <script>
     (() => {
       const MAX_FILES = 15;
-      const MAX_ZOOM = 5;
+      const MAX_ZOOM = 4;
       const MIN_ZOOM = 1;
-      const ZOOM_STEP = 0.25;
 
       const elements = {
-        wrapper: document.getElementById('imageWrapper'),
-        mainImage: document.getElementById('mainImage'),
-        counter: document.getElementById('counter'),
+        card: document.getElementById('mainCard'),
         placeholder: document.getElementById('placeholder'),
+        mainImage: document.getElementById('mainImage'),
+        zoomTrigger: document.getElementById('zoomTrigger'),
+        btnPrev: document.getElementById('btnPrev'),
+        btnNext: document.getElementById('btnNext'),
+        counter: document.getElementById('counter'),
         lightbox: document.getElementById('lightbox'),
-        lightboxImage: document.getElementById('lightboxImage'),
         lightboxCanvas: document.getElementById('lightboxCanvas'),
-        closeBtn: document.getElementById('closeLightbox'),
-        prevBtn: document.getElementById('prevImage'),
-        nextBtn: document.getElementById('nextImage'),
+        lightboxImage: document.getElementById('lightboxImage'),
+        btnClose: document.getElementById('btnClose'),
+        floatPrev: document.getElementById('floatPrev'),
+        floatNext: document.getElementById('floatNext'),
       };
 
       const state = {
@@ -245,19 +316,19 @@
         scale: 1,
         translateX: 0,
         translateY: 0,
-        panning: false,
         pointerId: null,
         lastX: 0,
         lastY: 0,
+        panning: false,
       };
 
       const pinchState = {
-        active: false,
         startDistance: 0,
         startScale: 1,
+        active: false,
       };
 
-      const lightboxPointers = new Map();
+      const pointerMap = new Map();
       let jotformBridgeReady = false;
 
       const serializeImages = () => JSON.stringify(state.images);
@@ -268,64 +339,90 @@
         }
       };
 
-      const updateNavButtons = () => {
-        if (!state.images.length) {
-          elements.prevBtn.disabled = true;
-          elements.nextBtn.disabled = true;
-          return;
+      const requestFullscreen = () => {
+        const target = elements.lightbox;
+        if (target.requestFullscreen) {
+          target.requestFullscreen().catch(() => {});
+        } else if (target.webkitRequestFullscreen) {
+          target.webkitRequestFullscreen();
+        } else if (target.msRequestFullscreen) {
+          target.msRequestFullscreen();
         }
-        elements.prevBtn.disabled = state.activeIndex <= 0;
-        elements.nextBtn.disabled = state.activeIndex >= state.images.length - 1;
+      };
+
+      const exitFullscreen = () => {
+        if (document.fullscreenElement) {
+          document.exitFullscreen?.().catch(() => {});
+        } else if (document.webkitFullscreenElement) {
+          document.webkitExitFullscreen?.();
+        }
+      };
+
+      const updateNavigation = () => {
+        const disablePrev = state.activeIndex <= 0;
+        const disableNext = state.activeIndex >= state.images.length - 1;
+        elements.btnPrev.disabled = disablePrev;
+        elements.btnNext.disabled = disableNext;
+        elements.floatPrev.style.display = disablePrev ? 'none' : 'flex';
+        elements.floatNext.style.display = disableNext ? 'none' : 'flex';
       };
 
       const updateMainView = () => {
         if (!state.images.length) {
-          elements.wrapper.classList.add('hidden');
-          elements.counter.classList.add('hidden');
+          elements.card.classList.add('hidden');
           elements.placeholder.classList.remove('hidden');
-          updateNavButtons();
+          elements.placeholder.textContent = 'Nenhuma imagem disponivel.';
+          elements.counter.textContent = '0 / 0';
+          updateNavigation();
           return;
         }
+
+        elements.placeholder.classList.add('hidden');
+        elements.card.classList.remove('hidden');
 
         const current = state.images[state.activeIndex];
         elements.mainImage.src = current.url;
         elements.mainImage.alt = current.name || `Imagem ${state.activeIndex + 1}`;
-        elements.wrapper.classList.remove('hidden');
-        elements.counter.classList.remove('hidden');
-        elements.placeholder.classList.add('hidden');
         elements.counter.textContent = `${state.activeIndex + 1} / ${state.images.length}`;
-        updateNavButtons();
+        updateNavigation();
       };
 
       const updateLightboxImage = () => {
         if (!state.images.length) return;
         const current = state.images[state.activeIndex];
-        elements.lightboxImage.src = current.url;
-        elements.lightboxImage.alt = current.name || `Imagem ${state.activeIndex + 1}`;
-        updateNavButtons();
+        elements.lightboxImage.style.opacity = '0.5';
+        requestAnimationFrame(() => {
+          elements.lightboxImage.src = current.url;
+          elements.lightboxImage.alt = current.name || `Imagem ${state.activeIndex + 1}`;
+          elements.lightboxImage.onload = () => {
+            elements.lightboxImage.style.opacity = '1';
+          };
+        });
       };
 
       const openLightbox = () => {
         if (!state.images.length) return;
-        elements.lightbox.classList.remove('hidden');
+        elements.lightbox.classList.add('active');
         document.body.style.overflow = 'hidden';
         resetZoom();
         updateLightboxImage();
+        requestFullscreen();
       };
 
       const closeLightbox = () => {
-        elements.lightbox.classList.add('hidden');
+        elements.lightbox.classList.remove('active');
         document.body.style.overflow = '';
+        exitFullscreen();
         resetZoom();
       };
 
       const showImageOffset = (offset) => {
         if (!state.images.length) return;
         const nextIndex = state.activeIndex + offset;
-        if (nextIndex < 0 || nextIndex > state.images.length - 1) return;
+        if (nextIndex < 0 || nextIndex >= state.images.length) return;
         state.activeIndex = nextIndex;
         updateMainView();
-        if (!elements.lightbox.classList.contains('hidden')) {
+        if (elements.lightbox.classList.contains('active')) {
           resetZoom();
           updateLightboxImage();
         }
@@ -340,43 +437,44 @@
         zoomState.scale = 1;
         zoomState.translateX = 0;
         zoomState.translateY = 0;
-        zoomState.panning = false;
         zoomState.pointerId = null;
-        lightboxPointers.clear();
-        pinchState.active = false;
+        zoomState.lastX = 0;
+        zoomState.lastY = 0;
+        zoomState.panning = false;
+        pointerMap.clear();
         pinchState.startDistance = 0;
         pinchState.startScale = 1;
+        pinchState.active = false;
         applyZoom();
       };
 
       const distanceBetweenPointers = () => {
-        if (lightboxPointers.size < 2) return 0;
-        const [p1, p2] = Array.from(lightboxPointers.values());
+        if (pointerMap.size < 2) return 0;
+        const [p1, p2] = Array.from(pointerMap.values());
         return Math.hypot(p1.x - p2.x, p1.y - p2.y);
       };
 
-      const handleLightboxPointerDown = (event) => {
-        lightboxPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      const handlePointerDown = (event) => {
+        pointerMap.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        elements.lightboxCanvas.setPointerCapture?.(event.pointerId);
 
-        if (lightboxPointers.size === 2) {
+        if (pointerMap.size === 2) {
           pinchState.active = true;
           pinchState.startDistance = distanceBetweenPointers();
           pinchState.startScale = zoomState.scale;
-        } else if (lightboxPointers.size === 1 && zoomState.scale > 1) {
+        } else if (pointerMap.size === 1 && zoomState.scale > 1) {
           zoomState.panning = true;
           zoomState.pointerId = event.pointerId;
           zoomState.lastX = event.clientX;
           zoomState.lastY = event.clientY;
         }
-
-        elements.lightboxCanvas.setPointerCapture?.(event.pointerId);
       };
 
-      const handleLightboxPointerMove = (event) => {
-        if (!lightboxPointers.has(event.pointerId)) return;
-        lightboxPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      const handlePointerMove = (event) => {
+        if (!pointerMap.has(event.pointerId)) return;
+        pointerMap.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
-        if (pinchState.active && lightboxPointers.size >= 2) {
+        if (pinchState.active && pointerMap.size >= 2) {
           const distance = distanceBetweenPointers();
           if (distance && pinchState.startDistance) {
             const ratio = distance / pinchState.startDistance;
@@ -389,18 +487,18 @@
         if (zoomState.panning && zoomState.pointerId === event.pointerId) {
           const dx = event.clientX - zoomState.lastX;
           const dy = event.clientY - zoomState.lastY;
-          zoomState.lastX = event.clientX;
-          zoomState.lastY = event.clientY;
           zoomState.translateX += dx;
           zoomState.translateY += dy;
+          zoomState.lastX = event.clientX;
+          zoomState.lastY = event.clientY;
           applyZoom();
         }
       };
 
-      const handleLightboxPointerEnd = (event) => {
-        lightboxPointers.delete(event.pointerId);
+      const handlePointerEnd = (event) => {
+        pointerMap.delete(event.pointerId);
 
-        if (pinchState.active && lightboxPointers.size < 2) {
+        if (pinchState.active && pointerMap.size < 2) {
           pinchState.active = false;
           pinchState.startDistance = 0;
         }
@@ -413,15 +511,15 @@
         elements.lightboxCanvas.releasePointerCapture?.(event.pointerId);
       };
 
-      const handleWheelZoom = (event) => {
+      const handleWheel = (event) => {
         event.preventDefault();
-        const direction = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-        const nextScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomState.scale + direction));
-        zoomState.scale = nextScale;
+        const step = event.deltaY > 0 ? -0.25 : 0.25;
+        const nextScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomState.scale + step));
         if (nextScale === 1) {
           zoomState.translateX = 0;
           zoomState.translateY = 0;
         }
+        zoomState.scale = nextScale;
         applyZoom();
       };
 
@@ -518,7 +616,9 @@
           if (preferredKeys.some((hint) => normalizedKey.includes(hint))) {
             const arr = normalizeArrayValue(settings[key]);
             if (arr.length) {
-              return arr.map((value) => (typeof value === 'string' ? value.trim() : '')).filter(Boolean);
+              return arr
+                .map((value) => (typeof value === 'string' ? value.trim() : ''))
+                .filter(Boolean);
             }
           }
         }
@@ -600,12 +700,38 @@
       };
 
       const setupEvents = () => {
-        elements.wrapper.addEventListener('click', openLightbox);
-
-        elements.closeBtn.addEventListener('click', (event) => {
+        elements.zoomTrigger.addEventListener('click', openLightbox);
+        elements.btnClose.addEventListener('click', (event) => {
           event.stopPropagation();
           closeLightbox();
         });
+
+        elements.btnPrev.addEventListener('click', (event) => {
+          event.stopPropagation();
+          showImageOffset(-1);
+        });
+
+        elements.btnNext.addEventListener('click', (event) => {
+          event.stopPropagation();
+          showImageOffset(1);
+        });
+
+        elements.floatPrev.addEventListener('click', (event) => {
+          event.stopPropagation();
+          showImageOffset(-1);
+        });
+
+        elements.floatNext.addEventListener('click', (event) => {
+          event.stopPropagation();
+          showImageOffset(1);
+        });
+
+        elements.lightboxCanvas.addEventListener('pointerdown', handlePointerDown);
+        elements.lightboxCanvas.addEventListener('pointermove', handlePointerMove);
+        elements.lightboxCanvas.addEventListener('pointerup', handlePointerEnd);
+        elements.lightboxCanvas.addEventListener('pointerleave', handlePointerEnd);
+        elements.lightboxCanvas.addEventListener('pointercancel', handlePointerEnd);
+        elements.lightboxCanvas.addEventListener('wheel', handleWheel, { passive: false });
 
         elements.lightbox.addEventListener('click', (event) => {
           if (event.target === elements.lightbox) {
@@ -613,34 +739,26 @@
           }
         });
 
-        elements.prevBtn.addEventListener('click', (event) => {
-          event.stopPropagation();
-          showImageOffset(-1);
-        });
-
-        elements.nextBtn.addEventListener('click', (event) => {
-          event.stopPropagation();
-          showImageOffset(1);
-        });
-
-        elements.lightboxCanvas.addEventListener('pointerdown', handleLightboxPointerDown);
-        elements.lightboxCanvas.addEventListener('pointermove', handleLightboxPointerMove);
-        elements.lightboxCanvas.addEventListener('pointerup', handleLightboxPointerEnd);
-        elements.lightboxCanvas.addEventListener('pointerleave', handleLightboxPointerEnd);
-        elements.lightboxCanvas.addEventListener('pointercancel', handleLightboxPointerEnd);
-        elements.lightboxCanvas.addEventListener('wheel', handleWheelZoom, { passive: false });
-
         document.addEventListener('keydown', (event) => {
-          if (elements.lightbox.classList.contains('hidden')) return;
-          if (event.key === 'Escape') {
+          if (event.key === 'Escape' && elements.lightbox.classList.contains('active')) {
             event.preventDefault();
             closeLightbox();
           } else if (event.key === 'ArrowLeft') {
-            event.preventDefault();
-            showImageOffset(-1);
+            if (elements.lightbox.classList.contains('active')) {
+              event.preventDefault();
+              showImageOffset(-1);
+            }
           } else if (event.key === 'ArrowRight') {
-            event.preventDefault();
-            showImageOffset(1);
+            if (elements.lightbox.classList.contains('active')) {
+              event.preventDefault();
+              showImageOffset(1);
+            }
+          }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+          if (!document.fullscreenElement && elements.lightbox.classList.contains('active')) {
+            closeLightbox();
           }
         });
       };
@@ -669,10 +787,8 @@
           if (Array.isArray(window.demoImages) && window.demoImages.length) {
             state.images = window.demoImages.slice(0, MAX_FILES);
             state.activeIndex = 0;
-            updateMainView();
-          } else {
-            updateMainView();
           }
+          updateMainView();
         }
 
         setupJotformBridge();
